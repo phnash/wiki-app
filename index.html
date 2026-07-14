@@ -2418,10 +2418,91 @@
     return '';
   }
 
+  // Convert one inline element (and its descendants) inside a list item to
+  // Markdown. Underline uses the same %%UOPEN%% shielding as the main
+  // pipeline so it survives the final strip-all-tags pass.
+  function inlineNodeToMd(el) {
+    let inner = '';
+    for (const child of Array.from(el.childNodes)) {
+      if (child.nodeType === 3) { inner += child.textContent; continue; }
+      if (child.nodeType !== 1) continue;
+      inner += inlineNodeToMd(child);
+    }
+    switch (el.tagName.toLowerCase()) {
+      case 'strong': case 'b': return inner ? `**${inner}**` : '';
+      case 'em': case 'i': return inner ? `*${inner}*` : '';
+      case 'u': return inner ? `%%UOPEN%%${inner}%%UCLOSE%%` : '';
+      case 's': case 'strike': return inner ? `~~${inner}~~` : '';
+      case 'code': return inner ? '`' + inner + '`' : '';
+      case 'a': return `[${inner}](${el.getAttribute('href') || ''})`;
+      case 'img': return `![${el.getAttribute('alt') || ''}](${el.getAttribute('src') || ''})`;
+      case 'br': return ' ';
+      default: return inner;
+    }
+  }
+
+  // Convert a <ul>/<ol> element tree to Markdown via a real DOM walk.
+  // The old line-based regex parser silently destroyed list content:
+  // TinyMCE serializes paragraph-wrapped items (which is what a Markdown
+  // "loose" list becomes after a round-trip through marked) as
+  //   <li>
+  //   <p>item text</p>
+  //   </li>
+  // and the line parser emitted an empty "1." for the bare <li> line, then
+  // dropped every non-<li> line inside the block - so all the text after
+  // the numbers vanished on save. A DOM walk also gets real item numbering
+  // (not "1." for every row), nested lists with correct indentation, and
+  // preserved inline formatting.
+  function listToMarkdown(listEl, indent) {
+    const ordered = listEl.tagName.toLowerCase() === 'ol';
+    let counter = parseInt(listEl.getAttribute('start') || '1', 10);
+    if (isNaN(counter)) counter = 1;
+    let out = '';
+    for (const li of Array.from(listEl.children)) {
+      if (li.tagName.toLowerCase() !== 'li') continue;
+      const prefix = ordered ? `${counter}. ` : '- ';
+      const childIndent = indent + ' '.repeat(prefix.length);
+      let text = '';
+      let nested = '';
+      for (const child of Array.from(li.childNodes)) {
+        if (child.nodeType === 1 && /^(ul|ol)$/i.test(child.tagName)) {
+          nested += listToMarkdown(child, childIndent);
+        } else if (child.nodeType === 1) {
+          const piece = inlineNodeToMd(child);
+          if (piece) text += (text ? ' ' : '') + piece;
+        } else if (child.nodeType === 3) {
+          text += child.textContent;
+        }
+      }
+      text = text.replace(/\s+/g, ' ').trim();
+      out += indent + prefix + text + '\n' + nested;
+      counter++;
+    }
+    return out;
+  }
+
   function htmlToMarkdown(html) {
     if (!html) return '';
 
     let md = html;
+
+    // Lists first, swapped out for placeholder tokens via a DOM parse so
+    // the regex pipeline below never touches list internals (see
+    // listToMarkdown for why the old line-based approach lost content).
+    // Top-level lists only - nested ones are handled by the recursion.
+    const listChunks = [];
+    try {
+      const doc = new DOMParser().parseFromString(md, 'text/html');
+      Array.from(doc.querySelectorAll('ul, ol')).forEach(list => {
+        if (list.parentElement && list.parentElement.closest('ul, ol')) return;
+        const token = `%%LISTCHUNK${listChunks.length}%%`;
+        listChunks.push(listToMarkdown(list, ''));
+        list.replaceWith(doc.createTextNode('\n' + token + '\n'));
+      });
+      md = doc.body.innerHTML;
+    } catch (e) {
+      console.warn('DOM list conversion failed, lists may be lost:', e);
+    }
 
     md = md.replace(/<br\s*\/?>/gi, '\n');
     md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n');
@@ -2446,52 +2527,6 @@
     md = md.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
     md = md.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)');
     md = md.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)');
-
-    let lines = md.split('\n');
-    let processedLines = [];
-    let currentIndent = 0;
-    let inListBlock = false;
-    let listTypeStack = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i];
-      let trimmed = line.trim();
-
-      if (trimmed.match(/^<ul[^>]*>$/)) {
-        currentIndent++;
-        inListBlock = true;
-        listTypeStack.push('ul');
-        continue;
-      } else if (trimmed.match(/^<ol[^>]*>$/)) {
-        currentIndent++;
-        inListBlock = true;
-        listTypeStack.push('ol');
-        continue;
-      } else if (trimmed === '</ul>' || trimmed === '</ol>') {
-        currentIndent--;
-        listTypeStack.pop();
-        if (currentIndent === 0) {
-          inListBlock = false;
-        }
-        continue;
-      }
-
-      if (trimmed.match(/^<li[^>]*>/)) {
-        let content = trimmed.replace(/^<li[^>]*>/, '').replace(/<\/li>/, '');
-        content = content.replace(/<[^>]*>/g, '').trim();
-        const indent = '  '.repeat(Math.max(0, currentIndent - 1));
-        const currentListType = listTypeStack[listTypeStack.length - 1];
-        const prefix = currentListType === 'ol' ? '1. ' : '- ';
-        processedLines.push(`${indent}${prefix}${content}`);
-        continue;
-      }
-
-      if (!inListBlock) {
-        processedLines.push(line);
-      }
-    }
-
-    md = processedLines.join('\n');
 
     md = md.replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, function(match, content) {
       let lines = content.replace(/<br\s*\/?>/gi, '\n').split('\n');
@@ -2541,7 +2576,12 @@
 
     md = md.replace(/\n{4,}/g, '\n\n');
     md = md.replace(/<[^>]*>/g, '');
-    // Restore the shielded <u> tags now that the strip pass is done
+    // Splice the converted lists back in (after the tag strip, since the
+    // chunks are already Markdown), then restore the shielded <u> tags -
+    // list items may contain them too, so this order matters
+    listChunks.forEach((chunk, i) => {
+      md = md.split(`%%LISTCHUNK${i}%%`).join(chunk.replace(/\s+$/, ''));
+    });
     md = md.replace(/%%UOPEN%%/g, '<u>').replace(/%%UCLOSE%%/g, '</u>');
     md = md.trim();
 
