@@ -33,6 +33,11 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* The hidden attribute must always win - author display rules like
+     .btn { display:inline-flex } otherwise override the UA's [hidden]
+     rule, which is why the header's Edit/Save buttons were visible on
+     the Welcome screen despite being set hidden */
+  [hidden] { display: none !important; }
   body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #eef2f7; color: #0b1a2a; line-height: 1.6; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
   #app { width: 100%; max-width: 1440px; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow); display: flex; min-height: 85vh; overflow: hidden; }
 
@@ -83,6 +88,20 @@
   .btn-reset { background: #d32f2f; border-color: #d32f2f; color: white; font-weight: 600; }
   .btn-reset:hover { background: #b71c1c; border-color: #b71c1c; }
   .status { font-size: 0.7rem; color: var(--text-muted); margin-left: auto; }
+  .sidebar-actions { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; flex-shrink: 0; }
+  .sidebar-actions .btn { flex: 1; justify-content: center; }
+
+  .nav-cat { margin-bottom: 0.2rem; }
+  .nav-cat-header { position: sticky; top: 0; z-index: 2; width: 100%; display: flex; align-items: center; gap: 0.4rem; background: var(--primary); border: none; color: #8fb3c9; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; padding: 0.5rem 0.4rem; cursor: pointer; border-radius: 6px; text-align: left; transition: var(--transition); }
+  .nav-cat-header:hover { background: #122c40; color: #cfe3f2; }
+  .cat-arrow { width: 0.9em; display: inline-block; flex-shrink: 0; }
+  .cat-label { flex: 1; }
+  .cat-count { background: var(--primary-light); color: #9fc0d4; font-size: 0.65rem; padding: 0.05rem 0.55rem; border-radius: 40px; flex-shrink: 0; }
+  .nav-cat-pages { max-height: 45vh; overflow-y: auto; padding: 0.15rem 0 0.3rem; }
+  .nav-cat-pages::-webkit-scrollbar { width: 4px; }
+  .nav-cat-pages::-webkit-scrollbar-track { background: var(--primary-light); border-radius: 10px; }
+  .nav-cat-pages::-webkit-scrollbar-thumb { background: #3e7b93; border-radius: 10px; }
+  .nav-empty { color: #4b6f85; font-size: 0.75rem; padding: 0.2rem 0.6rem; font-style: italic; }
   .sidebar-scrim { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 9; }
   .server-status { font-size: 0.65rem; color: #5f8ba8; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
   .server-status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -318,14 +337,35 @@
     .modal-content { max-width: 98%; padding: 1.2rem; } 
     .main-content { height: 100vh; }
   }
-  @media (max-width: 480px) { 
-    .crumb-cat { font-size: 0.6rem; } 
-    .page-title { font-size: 1rem; } 
-    .header-actions .btn { font-size: 0.7rem; padding: 0.2rem 0.8rem; } 
-    .term-row { flex-wrap: wrap; } 
-    .history-item { flex-direction: column; align-items: flex-start; } 
-    .content-area table { font-size: 0.85rem; } 
-    .content-area th, .content-area td { padding: 0.4rem 0.6rem; } 
+  @media (max-width: 480px) {
+    .crumb-cat { font-size: 0.6rem; }
+    .page-title { font-size: 1rem; }
+    .header-actions .btn { font-size: 0.7rem; padding: 0.2rem 0.8rem; }
+    .term-row { flex-wrap: wrap; }
+    .history-item { flex-direction: column; align-items: flex-start; }
+    .content-area table { font-size: 0.85rem; }
+    .content-area th, .content-area td { padding: 0.4rem 0.6rem; }
+  }
+
+  /* ===== PRINT: clean document only - title + rendered content ===== */
+  @media print {
+    body { background: white; padding: 0; display: block; min-height: 0; }
+    #app { box-shadow: none; border-radius: 0; max-width: 100%; min-height: 0; display: block; overflow: visible; }
+    .sidebar, .sidebar-scrim, .menu-btn, .header-actions, .modal, .notification,
+    .crumb-cat, .version-badge { display: none !important; }
+    .main-content { height: auto; overflow: visible; background: white; }
+    .main-header { background: white; border-bottom: 2px solid #000; padding: 0 0 0.5rem 0; }
+    .page-title { font-size: 1.6rem; color: #000; }
+    .content-area { overflow: visible; height: auto; padding: 1rem 0; background: white; }
+    .content-area h1, .content-area h2, .content-area h3, .content-area h4,
+    .content-area p, .content-area td, .content-area li { color: #000; }
+    .content-area a { color: #000; }
+    .content-area pre { background: #f5f5f5; color: #000; border: 1px solid #ccc; }
+    .content-area pre code { color: #000; }
+    .content-area table { box-shadow: none; }
+    .content-area th { background: #eee; border-bottom: 2px solid #999; }
+    .content-area td { border-bottom: 1px solid #ccc; }
+    .content-area tr:hover td { background: transparent; }
   }
 </style>
 </head>
@@ -343,6 +383,11 @@
       </div>
       <button class="close-sidebar" id="closeSidebar">✕</button>
     </div>
+    <div class="sidebar-actions">
+      <button class="btn btn-home" id="homeBtn">🏠 Home</button>
+      <button class="btn btn-folder" id="folderBtn">📁 Select</button>
+      <button class="btn btn-add" id="addPageBtn">+ Add</button>
+    </div>
     <div class="search-box">
       <span class="search-icon">⌕</span>
       <input type="text" id="searchInput" placeholder="Search pages…  (Ctrl+K)" aria-label="Search pages" autocomplete="off">
@@ -354,12 +399,9 @@
         <span class="dot offline" id="statusDot"></span>
         <span id="statusText">No folder selected</span>
       </span>
-      <button class="btn btn-home" id="homeBtn">🏠 Home</button>
-      <button class="btn btn-folder" id="folderBtn">📁 Select</button>
       <button class="btn btn-resync" id="resyncBtn" disabled>🔄 Resync</button>
       <button class="btn btn-reset" id="resetBtn" disabled>🗑️ Reset DB</button>
       <button class="btn btn-validate" id="validateBtn">⟲ Validate</button>
-      <button class="btn btn-add" id="addPageBtn">+ Add</button>
       <span class="status" id="validationStatus">Ready</span>
     </div>
     <div class="folder-hint">Select any folder — will scan for <strong>all subfolders</strong></div>
@@ -376,6 +418,7 @@
       </div>
       <div class="header-actions">
         <button class="btn btn-history" id="historyBtn" style="display:none;">📜 History</button>
+        <button class="btn btn-edit" id="printBtn" style="display:none;">🖨 Print</button>
         <button class="btn btn-edit" id="editBtn">✎ Edit</button>
         <button class="btn btn-save" id="saveBtn" hidden>💾 Save</button>
       </div>
@@ -585,8 +628,15 @@
   let rootHandle = null;
   let pagesDirHandle = null;
   let db = null;
+  let metaDB = null;          // separate store for app metadata (e.g. the
+                              // saved folder handle) - kept out of the
+                              // `pages` store so sync's delete pass and
+                              // loadPages() never mistake it for a page
+  let pendingHandle = null;   // folder handle restored from a previous
+                              // session, awaiting a user-gesture reconnect
   let wikiPages = [];
   let categories = [];
+  let expandedCategories = new Set();  // session-only; all collapsed on load
   let currentPageId = null;
   let isEditing = false;
   let editingPageId = null;
@@ -644,6 +694,79 @@
     }
   }
 
+  function initMetaDB() {
+    try {
+      metaDB = localforage.createInstance({ name: 'USBWiki', storeName: 'meta' });
+    } catch (e) {
+      console.warn('Meta store unavailable:', e);
+      metaDB = null;
+    }
+  }
+
+  // ============================================================
+  // FOLDER RECONNECT (across page reloads)
+  // ============================================================
+
+  // FileSystemDirectoryHandle is structured-clonable in Chromium, so it can
+  // be persisted in IndexedDB and re-used after a reload. Permission cannot
+  // be re-requested without a user gesture, so on load we only surface a
+  // "Reconnect" affordance; the actual permission prompt happens on click.
+  async function tryRestoreHandle() {
+    if (!metaDB || !('showDirectoryPicker' in window)) return;
+    try {
+      const stored = await metaDB.getItem('dirHandle');
+      if (!stored) return;
+      pendingHandle = stored;
+      $('statusText').textContent = '↻ Reconnect: ' + (stored.name || 'folder');
+      $('folderBtn').textContent = '📁 Reconnect';
+      $('folderStatus').title = 'Click to reconnect to your last folder';
+    } catch (e) {
+      console.warn('Could not restore folder handle:', e);
+    }
+  }
+
+  async function reconnectFolder() {
+    if (!pendingHandle) return false;
+    try {
+      let perm = await pendingHandle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') {
+        perm = await pendingHandle.requestPermission({ mode: 'readwrite' });
+      }
+      if (perm !== 'granted') return false;
+
+      rootHandle = pendingHandle;
+      try {
+        pagesDirHandle = await rootHandle.getDirectoryHandle('pages', { create: true });
+      } catch (e) {
+        pagesDirHandle = rootHandle;
+      }
+
+      // Deliberately no DB wipe here - syncFromFileSystem reconciles the
+      // existing cache (adds/updates/deletes) against disk, which is the
+      // whole point of reconnecting instead of re-selecting.
+      await discoverCategories(pagesDirHandle);
+      for (const cat of categories) {
+        try { await pagesDirHandle.getDirectoryHandle(cat, { create: true }); } catch (e) {}
+      }
+      await syncFromFileSystem(true);
+
+      updateFolderStatus(true);
+      updateCategoryDropdown();
+      $('resyncBtn').disabled = false;
+      $('resetBtn').disabled = false;
+      showNotification('✅ Reconnected to: ' + rootHandle.name, false, 'success');
+      pendingHandle = null;
+      return true;
+    } catch (e) {
+      // Stale handle (folder moved/deleted/USB not plugged in) - clear it
+      // and fall back to the normal picker.
+      console.warn('Reconnect failed, falling back to folder picker:', e);
+      pendingHandle = null;
+      if (metaDB) { try { await metaDB.removeItem('dirHandle'); } catch (e2) {} }
+      return false;
+    }
+  }
+
   // ============================================================
   // FOLDER SELECTION
   // ============================================================
@@ -695,6 +818,14 @@
       updateCategoryDropdown();
       $('resyncBtn').disabled = false;
       $('resetBtn').disabled = false;
+
+      // Persist the handle so the next session can offer one-click reconnect
+      if (metaDB) {
+        try { await metaDB.setItem('dirHandle', rootHandle); } catch (e) {
+          console.warn('Could not persist folder handle:', e);
+        }
+      }
+      pendingHandle = null;
 
       showNotification('✅ Connected to: ' + rootHandle.name + (pagesFound ? ' (pages/)' : ''), false, 'success');
 
@@ -1277,16 +1408,13 @@
     const scrollPos = contentArea.scrollTop;
 
     renderNav();
-    if (wikiPages.length > 0) {
-      if (!currentPageId || !wikiPages.find(p => p.id === currentPageId)) {
-        showPage(wikiPages[0]);
-      } else {
-        const currentPage = wikiPages.find(p => p.id === currentPageId);
-        if (currentPage) {
-          showPage(currentPage);
-        }
-      }
+    const currentPage = currentPageId ? wikiPages.find(p => p.id === currentPageId) : null;
+    if (currentPage) {
+      showPage(currentPage);
     } else {
+      // No page selected (fresh load / current page deleted): show Home
+      // rather than auto-opening an arbitrary first page - keeps all
+      // categories collapsed on opening, per the sidebar design.
       showWelcome();
     }
 
@@ -1376,6 +1504,9 @@
       await db.setItem(baseName, page);
     }
 
+    // Show the page that was just saved (loadPages falls back to the
+    // welcome screen when currentPageId doesn't resolve)
+    currentPageId = baseName;
     await loadPages();
     showNotification(`✅ "${title}" saved as v${version}`, false, 'success');
     return true;
@@ -1463,19 +1594,35 @@
 
     for (const cat of sortedCategories) {
       const label = cat.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      html += `<div class="nav-category">📁 ${escapeHtml(label)}</div>`;
+      const pages = grouped[cat] || [];
+      const isOpen = expandedCategories.has(cat);
 
-      if (!grouped[cat] || grouped[cat].length === 0) {
-        html += `<div style="color:#4b6f85;font-size:0.75rem;padding:0.2rem 0.6rem;font-style:italic;">No pages yet</div>`;
+      html += `<div class="nav-cat" data-cat="${escapeHtml(cat)}">`;
+      html += `<button class="nav-cat-header" data-cat="${escapeHtml(cat)}" aria-expanded="${isOpen}">` +
+        `<span class="cat-arrow">${isOpen ? '▾' : '▸'}</span>` +
+        `<span class="cat-label">📁 ${escapeHtml(label)}</span>` +
+        `<span class="cat-count">${pages.length}</span>` +
+        `</button>`;
+      html += `<div class="nav-cat-pages"${isOpen ? '' : ' hidden'}>`;
+
+      if (pages.length === 0) {
+        html += `<div class="nav-empty">No pages yet</div>`;
       } else {
-        grouped[cat].forEach(p => {
+        pages.forEach(p => {
           const vLabel = p.version > 1 ? `<span class="badge">v${p.version}</span>` : '';
           html +=
             `<div class="nav-item" data-id="${escapeHtml(p.id)}" data-category="${escapeHtml(cat)}" role="button" tabindex="0"><span class="nav-item-title">${escapeHtml(p.title)}</span>${vLabel}</div>`;
         });
       }
+      html += `</div></div>`;
     }
     container.innerHTML = html;
+
+    container.querySelectorAll('.nav-cat-header').forEach(btn => {
+      btn.addEventListener('click', function() {
+        toggleCategory(this.dataset.cat);
+      });
+    });
 
     container.querySelectorAll('.nav-item').forEach(el => {
       el.addEventListener('click', function(e) {
@@ -1484,11 +1631,7 @@
           document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
         } else {
           const page = wikiPages.find(p => p.id === this.dataset.id);
-          if (page) {
-            showPage(page);
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            this.classList.add('active');
-          }
+          if (page) showPage(page);
         }
         $('sidebar').classList.remove('open');
         $('sidebarScrim').classList.remove('active');
@@ -1500,6 +1643,31 @@
         }
       });
     });
+
+    // Restore the active highlight after a re-render (loadPages calls
+    // renderNav then showPage, but direct re-renders shouldn't lose it)
+    if (currentPageId) {
+      const active = container.querySelector(`.nav-item[data-id="${CSS.escape(currentPageId)}"]`);
+      if (active) active.classList.add('active');
+    }
+  }
+
+  // Expand/collapse a sidebar category. forceOpen: true = expand,
+  // false = collapse, undefined = toggle. Updates both the session state
+  // (used on the next renderNav) and the live DOM.
+  function toggleCategory(cat, forceOpen) {
+    const open = forceOpen === true ? true
+      : forceOpen === false ? false
+      : !expandedCategories.has(cat);
+    if (open) expandedCategories.add(cat); else expandedCategories.delete(cat);
+
+    const catEl = document.querySelector(`#navTree .nav-cat[data-cat="${CSS.escape(cat)}"]`);
+    if (!catEl) return;
+    const header = catEl.querySelector('.nav-cat-header');
+    const pagesEl = catEl.querySelector('.nav-cat-pages');
+    header.setAttribute('aria-expanded', String(open));
+    header.querySelector('.cat-arrow').textContent = open ? '▾' : '▸';
+    pagesEl.hidden = !open;
   }
 
   // ============================================================
@@ -1531,8 +1699,16 @@
       historyBtn.style.display = 'none';
     }
 
+    $('printBtn').style.display = 'inline-flex';
     $('editBtn').hidden = false;
     $('saveBtn').hidden = true;
+
+    // Keep the sidebar in step: highlight this page and make sure its
+    // (possibly collapsed) category is expanded so the highlight is visible
+    document.querySelectorAll('#navTree .nav-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.id === page.id);
+    });
+    toggleCategory(page.category, true);
 
     const contentArea = $('contentArea');
     contentArea.scrollTop = 0;
@@ -1586,6 +1762,7 @@
     $('editBtn').hidden = true;
     $('saveBtn').hidden = true;
     $('historyBtn').style.display = 'none';
+    $('printBtn').style.display = 'none';
   }
 
   function getFolderIcon(category) {
@@ -1639,13 +1816,41 @@
   }
 
   function filterNav(query) {
-    const items = document.querySelectorAll('.nav-item');
     const q = query.toLowerCase().trim();
-    items.forEach(el => {
-      const titleEl = el.querySelector('.nav-item-title');
-      const haystack = (titleEl ? titleEl.textContent : el.textContent).toLowerCase();
-      el.style.display = haystack.includes(q) ? 'block' : 'none';
+
+    document.querySelectorAll('#navTree .nav-cat').forEach(catEl => {
+      const items = catEl.querySelectorAll('.nav-item');
+      let matches = 0;
+      items.forEach(el => {
+        const titleEl = el.querySelector('.nav-item-title');
+        const haystack = (titleEl ? titleEl.textContent : el.textContent).toLowerCase();
+        const hit = q === '' || haystack.includes(q);
+        el.style.display = hit ? 'block' : 'none';
+        if (hit) matches++;
+      });
+
+      const header = catEl.querySelector('.nav-cat-header');
+      const pagesEl = catEl.querySelector('.nav-cat-pages');
+      if (q === '') {
+        // Search cleared - restore the user's collapse state
+        catEl.style.display = '';
+        const open = expandedCategories.has(catEl.dataset.cat);
+        pagesEl.hidden = !open;
+        header.setAttribute('aria-expanded', String(open));
+        header.querySelector('.cat-arrow').textContent = open ? '▾' : '▸';
+      } else {
+        // Searching - hide categories with no matches entirely (no orphaned
+        // headers), temporarily expand the ones that do match
+        catEl.style.display = matches > 0 ? '' : 'none';
+        pagesEl.hidden = matches === 0;
+        header.setAttribute('aria-expanded', String(matches > 0));
+        header.querySelector('.cat-arrow').textContent = '▾';
+      }
     });
+
+    // The static Home link always stays visible
+    const homeLink = document.querySelector('#navTree .home-link-nav');
+    if (homeLink) homeLink.style.display = 'block';
   }
 
   // ============================================================
@@ -1921,13 +2126,22 @@
             ${escapeHtml(v.changeDesc) || `Version ${v.version}`}
           </div>
           <div>
-            ${!isCurrent ? `<button class="btn-rollback" onclick="rollbackVersion('${escapeHtml(pageId)}', ${Number(v.version)})">↩ Rollback</button>` : ''}
+            ${!isCurrent ? `<button class="btn-rollback" data-version="${Number(v.version)}">↩ Rollback</button>` : ''}
           </div>
         </div>
       `;
     });
 
     list.innerHTML = html;
+
+    // Attach listeners instead of inline onclick - page IDs derive from
+    // filenames, and a quote in one would break out of an inline attribute
+    list.querySelectorAll('.btn-rollback').forEach(btn => {
+      btn.addEventListener('click', function() {
+        rollbackVersion(pageId, Number(this.dataset.version));
+      });
+    });
+
     openModalA11y('historyModal');
   }
 
@@ -2007,6 +2221,7 @@
 
     if (tinymce.get('pageContent')) {
       tinymce.get('pageContent').setContent('');
+      tinymce.get('pageContent').setDirty(false);
     } else {
       initEditor('');
     }
@@ -2055,6 +2270,7 @@
     if (tinymce.get('pageContent')) {
       const htmlContent = DOMPurify.sanitize(marked.parse(contentToEdit));
       tinymce.get('pageContent').setContent(htmlContent);
+      tinymce.get('pageContent').setDirty(false);
     } else {
       initEditor(contentToEdit);
     }
@@ -2075,6 +2291,16 @@
   }
 
   function closeModal(id) {
+    // Guard against silently discarding unsaved edits. The editor's dirty
+    // flag is reset on every programmatic content load and after a
+    // successful save, so this only fires when the user actually typed.
+    if (id === 'pageModal' && typeof tinymce !== 'undefined') {
+      const ed = tinymce.get('pageContent');
+      if (ed && ed.isDirty()) {
+        if (!confirm('Discard unsaved changes to this page?')) return;
+        ed.setDirty(false);
+      }
+    }
     $(id).classList.remove('active');
     if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
       lastFocusedElement.focus();
@@ -2091,6 +2317,7 @@
       if (tinymce.get('pageContent')) {
         const htmlContent = content ? DOMPurify.sanitize(marked.parse(content)) : '';
         tinymce.get('pageContent').setContent(htmlContent);
+        tinymce.get('pageContent').setDirty(false);
       }
       return;
     }
@@ -2155,6 +2382,7 @@
         editor.on('init', function() {
           const htmlContent = content ? DOMPurify.sanitize(marked.parse(content)) : '';
           editor.setContent(htmlContent);
+          editor.setDirty(false);
           editorInitialized = true;
         });
 
@@ -2181,9 +2409,11 @@
   // ============================================================
 
   function getEditorContent() {
-    if (tinymce.get('pageContent')) {
-      const html = tinymce.get('pageContent').getContent();
-      return htmlToMarkdown(html);
+    const ed = tinymce.get('pageContent');
+    // getContent() throws on a registered-but-not-yet-initialized editor
+    // (its serializer doesn't exist until 'init' fires)
+    if (ed && ed.initialized) {
+      return htmlToMarkdown(ed.getContent());
     }
     return '';
   }
@@ -2203,8 +2433,15 @@
     md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
     md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
     md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
-    md = md.replace(/<u[^>]*>(.*?)<\/u>/gi, '__$1__');
-    md = md.replace(/<strike[^>]*>(.*?)<\/strike>/gi, '~~$1~~');
+    // Markdown has no underline syntax and __text__ renders as BOLD in
+    // CommonMark, so mapping <u> to __..__ silently turned underline into
+    // bold on every edit round-trip. Keep <u> as inline HTML instead
+    // (marked renders it, DOMPurify allows it) - shield it from the final
+    // strip-all-tags pass with non-angle-bracket placeholders.
+    md = md.replace(/<u[^>]*>(.*?)<\/u>/gi, '%%UOPEN%%$1%%UCLOSE%%');
+    // TinyMCE 6 emits <s> for strikethrough (valid_elements normalizes
+    // strike -> s), so match both forms
+    md = md.replace(/<(?:s|strike)[^>]*>(.*?)<\/(?:s|strike)>/gi, '~~$1~~');
 
     md = md.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
     md = md.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)');
@@ -2304,6 +2541,8 @@
 
     md = md.replace(/\n{4,}/g, '\n\n');
     md = md.replace(/<[^>]*>/g, '');
+    // Restore the shielded <u> tags now that the strip pass is done
+    md = md.replace(/%%UOPEN%%/g, '<u>').replace(/%%UCLOSE%%/g, '</u>');
     md = md.trim();
 
     return md;
@@ -2335,6 +2574,15 @@
     const category = pageCategory.value;
     if (!category) { showNotification('⚠️ Please select a category', true); return; }
 
+    // TinyMCE loads asynchronously after the modal opens; saving before its
+    // init completes would silently persist an empty body (or throw). Make
+    // the user wait the extra moment instead.
+    const ed = tinymce.get('pageContent');
+    if (!ed || !ed.initialized) {
+      showNotification('⏳ Editor is still loading — try again in a moment', true);
+      return;
+    }
+
     isSaving = true;
     const originalLabel = savePageBtn.textContent;
     savePageBtn.disabled = true;
@@ -2361,16 +2609,15 @@
 
       const fullContent = buildMarkdown(title, content, terms, related, changeDesc);
 
-      if (isEditing && editingPageId) {
-        const success = await updatePage(editingPageId, fullContent, changeDesc);
-        if (success) {
-          closeModal('pageModal');
-        }
-      } else {
-        const success = await saveNewPage(title, category, fullContent, changeDesc);
-        if (success) {
-          closeModal('pageModal');
-        }
+      const success = (isEditing && editingPageId)
+        ? await updatePage(editingPageId, fullContent, changeDesc)
+        : await saveNewPage(title, category, fullContent, changeDesc);
+      if (success) {
+        // Saved - clear the dirty flag so closeModal's discard guard
+        // doesn't prompt about changes that were just persisted
+        const ed = tinymce.get('pageContent');
+        if (ed) ed.setDirty(false);
+        closeModal('pageModal');
       }
     } finally {
       isSaving = false;
@@ -2442,9 +2689,11 @@
       document.body.insertBefore(banner, document.body.firstChild);
     }
 
+    initMetaDB();
     initDB().then(success => {
       if (success) {
         showWelcome();
+        tryRestoreHandle();
       }
     });
 
@@ -2462,8 +2711,22 @@
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     });
 
-    $('folderBtn').addEventListener('click', selectFolder);
-    $('folderStatus').addEventListener('click', selectFolder);
+    // If a handle from a previous session is waiting, try the one-click
+    // reconnect first; fall through to the picker if it fails or was denied
+    async function handleFolderClick() {
+      if (!rootHandle && pendingHandle) {
+        const ok = await reconnectFolder();
+        if (ok) return;
+        $('folderBtn').textContent = '📁 Select';
+      }
+      selectFolder();
+    }
+    $('folderBtn').addEventListener('click', handleFolderClick);
+    $('folderStatus').addEventListener('click', handleFolderClick);
+
+    $('printBtn').addEventListener('click', function() {
+      window.print();
+    });
 
     $('resyncBtn').addEventListener('click', async function() {
       if (!pagesDirHandle) {
