@@ -1,0 +1,2479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USB Wiki — Marine Operations</title>
+<!-- Use marked + DOMPurify for proper Markdown rendering -->
+<!-- integrity hashes computed from the exact pinned npm package versions -->
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.0/marked.min.js"
+  integrity="sha384-+pBQSmYtEXC3hQ5VUaVCf29+iZoVJLtwOW9Wf/iFxETwDke401fmC3cesoWnEI3r"
+  crossorigin="anonymous">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"
+  integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a"
+  crossorigin="anonymous">
+</script>
+<style>
+  /* ===== CSS Variables ===== */
+  :root {
+    --primary: #0a1e2f;
+    --primary-light: #1a3347;
+    --accent: #2b7a8a;
+    --accent-hover: #3a8fa0;
+    --text-light: #e6edf5;
+    --text-muted: #8ba5b9;
+    --bg-main: #f9fcff;
+    --bg-card: #ffffff;
+    --border-color: #d6e2ed;
+    --shadow: 0 25px 50px -12px rgba(0,20,40,0.25);
+    --radius: 16px;
+    --radius-lg: 32px;
+    --transition: 0.2s ease;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #eef2f7; color: #0b1a2a; line-height: 1.6; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+  #app { width: 100%; max-width: 1440px; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow); display: flex; min-height: 85vh; overflow: hidden; }
+
+  .sidebar { width: 300px; background: var(--primary); color: var(--text-light); display: flex; flex-direction: column; flex-shrink: 0; padding: 1.8rem 1.2rem 1.2rem; overflow-y: auto; max-height: 100vh; }
+  .sidebar-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-shrink: 0; }
+  .brand { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+  .brand:hover .brand-mark { background: var(--accent-hover); }
+  .brand-mark { background: var(--accent); color: white; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 14px; font-size: 1.8rem; font-weight: 500; font-family: Georgia, serif; box-shadow: 0 4px 8px rgba(0,0,0,0.2); transition: var(--transition); }
+  .brand h1 { font-size: 1.4rem; font-weight: 600; color: white; }
+  .brand-sub { font-size: 0.7rem; font-weight: 400; color: var(--text-muted); margin-top: 2px; }
+  .close-sidebar { background: transparent; border: none; color: #7f99ae; font-size: 1.5rem; cursor: pointer; display: none; }
+
+  .search-box { background: var(--primary-light); border-radius: 60px; padding: 0.2rem 0.2rem 0.2rem 1.2rem; display: flex; align-items: center; gap: 0.3rem; margin-bottom: 1.8rem; border: 1px solid #2a4a62; flex-shrink: 0; }
+  .search-box:focus-within { border-color: var(--accent); background: #14303f; }
+  .search-icon { color: #7f9fb5; font-size: 1.2rem; }
+  #searchInput { background: transparent; border: none; padding: 0.6rem 0; color: white; width: 100%; font-size: 0.9rem; outline: none; }
+  #searchInput::placeholder { color: #7f9fb5; font-weight: 300; }
+  .clear-search { background: transparent; border: none; color: #6b8aa0; font-size: 1.2rem; padding: 0 0.6rem; cursor: pointer; display: none; }
+
+  .nav-tree { flex: 1; overflow-y: auto; padding-right: 0.3rem; margin-bottom: 1.2rem; min-height: 0; }
+  .nav-tree::-webkit-scrollbar { width: 4px; }
+  .nav-tree::-webkit-scrollbar-track { background: var(--primary-light); border-radius: 10px; }
+  .nav-tree::-webkit-scrollbar-thumb { background: #3e7b93; border-radius: 10px; }
+  .nav-category { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px; color: #6e93ab; margin: 1.2rem 0 0.4rem 0.2rem; font-weight: 600; }
+  .nav-item { display: block; padding: 0.4rem 0.6rem; border-radius: 8px; color: #c9ddee; text-decoration: none; font-size: 0.9rem; cursor: pointer; transition: var(--transition); margin-bottom: 0.1rem; }
+  .nav-item:hover { background: #1e3e55; color: white; }
+  .nav-item.active { background: var(--accent); color: white; font-weight: 500; }
+  .nav-item .badge { background: var(--accent); color: white; font-size: 0.55rem; padding: 0.05rem 0.4rem; border-radius: 40px; margin-left: 0.4rem; vertical-align: middle; }
+  .nav-item.home-link-nav { color: #4caf50; font-weight: 600; }
+  .nav-item.home-link-nav:hover { background: #1e3e55; color: #66bb6a; }
+
+  .sidebar-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem; border-top: 1px solid #1f3f55; padding-top: 1rem; margin-top: 0.2rem; flex-shrink: 0; }
+  .btn { background: transparent; border: 1px solid #2f5a72; color: #d0e3f0; padding: 0.3rem 1rem; border-radius: 40px; font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+  .btn-validate { border-color: #3e7b93; color: #b3d6e8; }
+  .btn-validate:hover { background: #2b5f77; border-color: #4a93ad; color: white; }
+  .btn-add { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn-add:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn-folder { background: var(--accent); border: 1px solid var(--accent); color: white; }
+  .btn-folder:hover { background: var(--accent-hover); }
+  .btn-folder.active { background: #4caf50; border-color: #4caf50; }
+  .btn-history { border-color: #4a6f85; color: #b3d6e8; }
+  .btn-history:hover { background: #2b4f65; color: white; }
+  .btn-home { background: #4caf50; border-color: #4caf50; color: white; font-weight: 600; }
+  .btn-home:hover { background: #388e3c; border-color: #388e3c; }
+  .btn-resync { background: #ff9800; border-color: #ff9800; color: white; font-weight: 600; }
+  .btn-resync:hover { background: #e68900; border-color: #e68900; }
+  .btn-resync:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-reset { background: #d32f2f; border-color: #d32f2f; color: white; font-weight: 600; }
+  .btn-reset:hover { background: #b71c1c; border-color: #b71c1c; }
+  .status { font-size: 0.7rem; color: var(--text-muted); margin-left: auto; }
+  .sidebar-scrim { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 9; }
+  .server-status { font-size: 0.65rem; color: #5f8ba8; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+  .server-status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .server-status .dot.online { background: #4caf50; }
+  .server-status .dot.offline { background: #ff9800; }
+  .server-status .dot.error { background: #f44336; }
+  .server-status .dot.syncing { background: #2196f3; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .folder-hint { font-size: 0.6rem; color: #6e93ab; margin-top: 0.2rem; flex-shrink: 0; }
+
+  .main-content { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); min-width: 0; height: 100vh; overflow: hidden; }
+  .main-header { background: white; padding: 1.2rem 2rem; border-bottom: 1px solid #e2eaf2; display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; flex-shrink: 0; }
+  .menu-btn { background: transparent; border: none; font-size: 1.8rem; color: #1f3f55; cursor: pointer; display: none; line-height: 1; }
+  .crumb { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; flex: 1; }
+  .crumb-cat { background: #e6eff7; color: #1c4b62; padding: 0.15rem 1rem; border-radius: 40px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+  .page-title { font-size: 1.3rem; font-weight: 600; color: #0a1e2f; letter-spacing: -0.01em; }
+  .header-actions { display: flex; gap: 0.6rem; margin-left: auto; flex-shrink: 0; }
+  .btn-edit { background: white; border: 1px solid #b6cfdf; color: #1d4a62; padding: 0.3rem 1.2rem; border-radius: 40px; font-size: 0.8rem; font-weight: 500; cursor: pointer; }
+  .btn-edit:hover { background: #e5f0f8; border-color: #7faec9; }
+  .btn-save { background: var(--accent); border: none; color: white; padding: 0.3rem 1.2rem; border-radius: 40px; font-size: 0.8rem; font-weight: 500; cursor: pointer; }
+  .btn-save:hover { background: var(--accent-hover); }
+  .content-area { flex: 1; padding: 2.2rem 2.5rem; overflow-y: auto; background: var(--bg-main); }
+  .version-badge { background: var(--accent); color: white; font-size: 0.6rem; padding: 0.1rem 0.6rem; border-radius: 40px; margin-left: 0.5rem; }
+
+  .content-area .home-link {
+    color: #4caf50;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 2px solid #4caf50;
+    padding-bottom: 2px;
+    transition: var(--transition);
+    cursor: pointer;
+  }
+  .content-area .home-link:hover {
+    color: #388e3c;
+    border-bottom-color: #388e3c;
+  }
+
+  /* ===== MARKDOWN RENDERED CONTENT STYLES ===== */
+  .content-area h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0.5rem 0 0.8rem;
+    color: #0b1b2e;
+    border-bottom: 2px solid #e9edf2;
+    padding-bottom: 0.4rem;
+  }
+  .content-area h2 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.6rem;
+    color: #142433;
+  }
+  .content-area h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 1.2rem 0 0.5rem;
+    color: #1a3347;
+  }
+  .content-area h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1rem 0 0.4rem;
+    color: #1a3347;
+  }
+  .content-area h5, .content-area h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0.8rem 0 0.3rem;
+    color: #1f3f55;
+  }
+  .content-area p {
+    margin: 0 0 0.8rem 0;
+    color: #1e3a4f;
+  }
+  .content-area blockquote {
+    border-left: 4px solid #2b7a8a;
+    padding: 0.5rem 1.2rem;
+    margin: 0.5rem 0 1rem;
+    background: #f0f5fa;
+    border-radius: 0 8px 8px 0;
+    color: #1a3347;
+  }
+  .content-area blockquote p { margin-bottom: 0.2rem; }
+  .content-area blockquote blockquote { margin-left: 0.8rem; }
+  .content-area ul, .content-area ol {
+    margin: 0.4rem 0 0.8rem 1.8rem;
+    padding-left: 0.4rem;
+  }
+  .content-area ul { list-style-type: disc; }
+  .content-area ul ul { list-style-type: circle; }
+  .content-area ul ul ul { list-style-type: square; }
+  .content-area ol { list-style-type: decimal; }
+  .content-area ol ol { list-style-type: lower-alpha; }
+  .content-area ol ol ol { list-style-type: lower-roman; }
+  .content-area li {
+    margin-bottom: 0.2rem;
+    padding-left: 0.2rem;
+  }
+  .content-area li > ul, .content-area li > ol {
+    margin-top: 0.1rem;
+    margin-bottom: 0.2rem;
+  }
+  .content-area table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.8rem 0;
+    font-size: 0.95rem;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .content-area th {
+    background: #e6eff7;
+    font-weight: 600;
+    padding: 0.6rem 1.2rem;
+    text-align: left;
+    border-bottom: 2px solid #d6e2ed;
+    color: #0a1e2f;
+  }
+  .content-area td {
+    padding: 0.6rem 1.2rem;
+    border-bottom: 1px solid #e6eff7;
+    color: #1e3a4f;
+  }
+  .content-area tr:last-child td { border-bottom: none; }
+  .content-area tr:hover td { background: #f5f8fc; }
+  .content-area code {
+    background: #eef2f7;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.9em;
+    color: #1a3347;
+  }
+  .content-area pre {
+    background: #1a2b3c;
+    color: #e6edf5;
+    padding: 1.2rem 1.5rem;
+    border-radius: 12px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.9rem;
+    margin: 0.8rem 0;
+    line-height: 1.6;
+  }
+  .content-area pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+  .content-area a {
+    color: #1f6feb;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: 500;
+  }
+  .content-area a:hover {
+    color: #1558c7;
+    text-decoration-thickness: 2px;
+  }
+  .content-area img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    margin: 0.6rem 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .content-area hr {
+    border: none;
+    border-top: 2px solid #e2e8ef;
+    margin: 1.8rem 0;
+  }
+  .content-area .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #4b6f85;
+  }
+  .content-area .empty-state .big-icon { font-size: 4rem; margin-bottom: 1rem; }
+
+  /* Modal styles */
+  .modal { display: none; position: fixed; inset: 0; background: rgba(8,28,44,0.6); align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(2px); }
+  .modal.active { display: flex; }
+  .modal-content { background: white; border-radius: var(--radius-lg); max-width: 820px; width: 95%; max-height: 92vh; overflow-y: auto; padding: 1.8rem 2rem 2rem; box-shadow: 0 40px 80px -20px rgba(0,20,40,0.5); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #e2eaf2; padding-bottom: 0.8rem; }
+  .modal-header h2 { font-size: 1.4rem; font-weight: 600; color: #0a1e2f; }
+  .modal-header .subtitle { font-size: 0.85rem; font-weight: 400; color: #6b8aa0; }
+  .close-modal { background: transparent; border: none; font-size: 1.6rem; color: #7f99ae; cursor: pointer; }
+  .modal-body label { display: block; font-weight: 600; font-size: 0.85rem; color: #1f3f55; margin: 1rem 0 0.25rem; }
+  .modal-body .hint { font-weight: 400; color: #6b8aa0; font-size: 0.75rem; }
+  .modal-body input, .modal-body select, .modal-body textarea { width: 100%; padding: 0.7rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius); font-size: 0.95rem; background: white; font-family: inherit; transition: var(--transition); }
+  .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(43,122,138,0.15); }
+  .modal-body textarea { resize: vertical; min-height: 80px; }
+  .modal-hint { font-size: 0.8rem; color: #4b6f85; background: #eef5fa; padding: 0.7rem 1rem; border-radius: var(--radius); margin: 0.8rem 0 0.2rem; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 0.8rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2eaf2; }
+  .modal-actions .btn { background: var(--accent); border: none; color: white; padding: 0.5rem 2rem; border-radius: 40px; font-weight: 500; }
+  .modal-actions .btn:hover { background: var(--accent-hover); }
+  .modal-actions .btn-secondary { background: #eef2f7; color: #1f3f55; border: 1px solid #d6e2ed; }
+  .modal-actions .btn-secondary:hover { background: #e2eaf2; }
+  .term-row { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.5rem; }
+  .term-row input { flex: 1; }
+  .term-row .btn-remove { background: none; border: none; color: #c62828; font-size: 1.2rem; cursor: pointer; padding: 0 0.3rem; }
+  .term-row .btn-remove:hover { color: #b71c1c; }
+  .btn-add-row { background: #eef2f7; border: 1px dashed #b6cfdf; color: #1d4a62; padding: 0.3rem 1rem; border-radius: 40px; font-size: 0.75rem; cursor: pointer; transition: var(--transition); }
+  .btn-add-row:hover { background: #e5f0f8; border-color: var(--accent); }
+  .history-list { margin: 1rem 0; }
+  .history-item { display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 1rem; border-bottom: 1px solid #e2eaf2; gap: 1rem; flex-wrap: wrap; }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .version-info { display: flex; align-items: center; gap: 0.8rem; }
+  .history-item .version-number { font-weight: 600; color: var(--accent); min-width: 60px; }
+  .history-item .version-date { font-size: 0.8rem; color: #6b8aa0; }
+  .history-item .version-current { background: #e6eff7; color: #1c4b62; padding: 0.1rem 0.5rem; border-radius: 40px; font-size: 0.65rem; font-weight: 600; }
+  .history-item .btn-rollback { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 0.2rem 0.8rem; border-radius: 40px; font-size: 0.7rem; cursor: pointer; transition: var(--transition); }
+  .history-item .btn-rollback:hover { background: var(--accent); color: white; }
+  .notification { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 0.7rem 2rem; border-radius: 60px; font-size: 0.9rem; box-shadow: 0 8px 24px rgba(0,0,0,0.2); opacity: 0; transition: 0.25s; pointer-events: none; z-index: 2000; }
+  .notification.show { opacity: 1; }
+  .notification.error { background: #c62828; }
+  .notification.success { background: #2b7a8a; }
+
+  .editor-wrapper { border: 1px solid var(--border-color); border-radius: var(--radius); overflow: hidden; transition: var(--transition); }
+  .editor-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(43,122,138,0.15); }
+
+  @media (max-width: 820px) { 
+    .sidebar { position: fixed; top: 0; left: -320px; height: 100%; width: 300px; z-index: 10; box-shadow: 0 0 40px rgba(0,0,0,0.3); border-radius: 0; max-height: 100vh; } 
+    .sidebar.open { left: 0; } 
+    .close-sidebar { display: block; } 
+    .sidebar-scrim.active { display: block; } 
+    .menu-btn { display: block; } 
+    .main-header { padding: 1rem 1.2rem; } 
+    .content-area { padding: 1.5rem; } 
+    #app { border-radius: 0; min-height: 100vh; height: 100vh; } 
+    .modal-content { max-width: 98%; padding: 1.2rem; } 
+    .main-content { height: 100vh; }
+  }
+  @media (max-width: 480px) { 
+    .crumb-cat { font-size: 0.6rem; } 
+    .page-title { font-size: 1rem; } 
+    .header-actions .btn { font-size: 0.7rem; padding: 0.2rem 0.8rem; } 
+    .term-row { flex-wrap: wrap; } 
+    .history-item { flex-direction: column; align-items: flex-start; } 
+    .content-area table { font-size: 0.85rem; } 
+    .content-area th, .content-area td { padding: 0.4rem 0.6rem; } 
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand" id="brandHome">
+        <span class="brand-mark">§</span>
+        <div>
+          <h1>USB Wiki</h1>
+          <p class="brand-sub">marine operations · offline-first</p>
+        </div>
+      </div>
+      <button class="close-sidebar" id="closeSidebar">✕</button>
+    </div>
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="searchInput" placeholder="Search pages…  (Ctrl+K)" aria-label="Search pages" autocomplete="off">
+      <button class="clear-search" id="clearSearch">✕</button>
+    </div>
+    <nav class="nav-tree" id="navTree"></nav>
+    <div class="sidebar-footer">
+      <span class="server-status" id="folderStatus" title="Click to select folder">
+        <span class="dot offline" id="statusDot"></span>
+        <span id="statusText">No folder selected</span>
+      </span>
+      <button class="btn btn-home" id="homeBtn">🏠 Home</button>
+      <button class="btn btn-folder" id="folderBtn">📁 Select</button>
+      <button class="btn btn-resync" id="resyncBtn" disabled>🔄 Resync</button>
+      <button class="btn btn-reset" id="resetBtn" disabled>🗑️ Reset DB</button>
+      <button class="btn btn-validate" id="validateBtn">⟲ Validate</button>
+      <button class="btn btn-add" id="addPageBtn">+ Add</button>
+      <span class="status" id="validationStatus">Ready</span>
+    </div>
+    <div class="folder-hint">Select any folder — will scan for <strong>all subfolders</strong></div>
+  </aside>
+  <div class="sidebar-scrim" id="sidebarScrim"></div>
+
+  <main class="main-content">
+    <header class="main-header">
+      <button class="menu-btn" id="menuBtn">☰</button>
+      <div class="crumb">
+        <span class="crumb-cat" id="crumbCat">General</span>
+        <span class="page-title" id="pageTitle">Welcome</span>
+        <span class="version-badge" id="versionBadge" style="display:none;">v1</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-history" id="historyBtn" style="display:none;">📜 History</button>
+        <button class="btn btn-edit" id="editBtn">✎ Edit</button>
+        <button class="btn btn-save" id="saveBtn" hidden>💾 Save</button>
+      </div>
+    </header>
+    <div class="content-area" id="contentArea">
+      <div class="empty-state">
+        <div class="big-icon">📁</div>
+        <h2>Select your wiki folder</h2>
+        <p>Click <strong>📁 Select</strong> in the sidebar to choose your folder.</p>
+        <p style="margin-top:0.5rem;font-size:0.9rem;color:#6b8aa0;">
+          The wiki will automatically read and write files from the folder you select.
+        </p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="notification" id="notification"></div>
+
+<div class="modal" id="validationModal">
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="validationModalHeading" tabindex="-1">
+    <div class="modal-header">
+      <h2 id="validationModalHeading">⟲ Wiki Validation</h2>
+      <button class="close-modal" data-close="validationModal">✕</button>
+    </div>
+    <div class="modal-body" id="validationResults"></div>
+  </div>
+</div>
+
+<div class="modal" id="historyModal">
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="historyTitle" tabindex="-1">
+    <div class="modal-header">
+      <div>
+        <h2 id="historyTitle">📜 Page History</h2>
+        <span class="subtitle" id="historySubtitle"></span>
+      </div>
+      <button class="close-modal" data-close="historyModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="historyList" class="history-list"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('historyModal')">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="pageModal">
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1">
+    <div class="modal-header">
+      <h2 id="modalTitle">+ Add a new page</h2>
+      <button class="close-modal" data-close="pageModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <label for="pageTitleInput">Page Title <span class="hint">(required)</span></label>
+      <input type="text" id="pageTitleInput" placeholder="e.g. VHF Channel Plan">
+
+      <label for="pageCategory">Category</label>
+      <select id="pageCategory">
+        <!-- Populated dynamically -->
+      </select>
+
+      <label>Content <span class="hint">(full page body with formatting)</span></label>
+      <div class="editor-wrapper">
+        <textarea id="pageContent" style="height:300px;"></textarea>
+      </div>
+      <p style="font-size:0.75rem;color:#6b8aa0;margin-top:0.3rem;">
+        💡 Use the toolbar to format text: bold, italic, lists, headings, links, images, and code blocks.
+      </p>
+
+      <label for="changeDescription">Change Description <span class="hint">(optional — what did you change?)</span></label>
+      <input type="text" id="changeDescription" placeholder="e.g. Added emergency procedures section" style="width:100%;">
+
+      <label style="margin-top:1rem;">Key Terms <span class="hint">(add terms and definitions)</span></label>
+      <div id="termsContainer">
+        <div class="term-row">
+          <input type="text" class="term-term" placeholder="Term" style="flex:0.4;">
+          <input type="text" class="term-definition" placeholder="Definition" style="flex:0.6;">
+          <button class="btn-remove" onclick="removeTermRow(this)" style="display:none;">✕</button>
+        </div>
+      </div>
+      <button class="btn-add-row" onclick="addTermRow()">+ Add Term</button>
+
+      <label style="margin-top:1rem;">Related Pages <span class="hint">(link to other wiki pages)</span></label>
+      <div id="relatedContainer">
+        <div class="term-row">
+          <input type="text" class="related-page" placeholder="Page title (e.g. DSC Protocol)" style="flex:1;">
+          <button class="btn-remove" onclick="removeRelatedRow(this)" style="display:none;">✕</button>
+        </div>
+      </div>
+      <button class="btn-add-row" onclick="addRelatedRow()">+ Add Related Page</button>
+
+      <p class="modal-hint">💾 Saves to <code>&lt;selected-folder&gt;/pages/&lt;category&gt;/</code></p>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('pageModal')">Cancel</button>
+        <button class="btn" id="savePageBtn">💾 Save Page</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"
+  integrity="sha384-MTDrIlFOzEqpmOxY6UIA/1Zkh0a64UlmJ6R0UrZXqXCPx99siPGi8EmtQjIeCcTH"
+  crossorigin="anonymous">
+</script>
+<!-- Pinned to an exact version (was floating "@6") - a floating major
+     version is both a moving-target risk on its own and incompatible
+     with SRI, since the served bytes can change under the same URL. -->
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.6/tinymce.min.js"
+  integrity="sha384-zFzebFBjO2w19oyogAFilUklY4d79QgCG5KxflEIHzc03UVoZ7hTQ9MsM334s4yD"
+  crossorigin="anonymous">
+</script>
+
+<script>
+  // Fail loudly and visibly if any required library didn't load, rather
+  // than letting the very next statement (marked.setOptions) throw an
+  // unguarded ReferenceError that silently kills the entire script - this
+  // matters specifically because the app is meant to work offline, so a
+  // failed CDN fetch (blocked, offline-before-first-cache, ad blocker,
+  // SRI mismatch) is an expected scenario, not a rare edge case.
+  (function checkDependencies() {
+    const required = { marked: typeof marked, DOMPurify: typeof DOMPurify,
+      localforage: typeof localforage, tinymce: typeof tinymce };
+    const missing = Object.keys(required).filter(k => required[k] === 'undefined');
+    if (missing.length > 0) {
+      document.addEventListener('DOMContentLoaded', function() {
+        document.body.innerHTML =
+          '<div style="max-width:520px;margin:15vh auto;padding:2rem;' +
+          'font-family:system-ui,sans-serif;text-align:center;color:#0a1e2f;">' +
+          '<div style="font-size:2.5rem;">⚠️</div>' +
+          '<h2>Couldn\'t load required libraries</h2>' +
+          '<p style="color:#4b6f85;">This app needs an internet connection the ' +
+          'first time it loads (to fetch: ' + missing.join(', ') + '). ' +
+          'Check your connection and reload the page.</p>' +
+          '</div>';
+      });
+      throw new Error('USB Wiki: missing required dependencies - ' + missing.join(', '));
+    }
+  })();
+</script>
+<script>
+(function() {
+  'use strict';
+  // ============================================================
+  // USB WIKI — FIXED STATE DESYNCHRONIZATION
+  // ============================================================
+
+  // The earlier <script> block already shows a friendly error and throws
+  // if a dependency failed to load - but that's a SEPARATE <script> tag,
+  // and browsers still run each subsequent <script> tag independently even
+  // after an earlier one throws. Without this check, the very next line
+  // (marked.setOptions) would throw its own unguarded ReferenceError and
+  // the whole app below it would silently never run. Returning early here
+  // (now that everything is wrapped in this IIFE) stops that cleanly.
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined' ||
+      typeof localforage === 'undefined' || typeof tinymce === 'undefined') {
+    return;
+  }
+
+  // ---- Configure marked for full CommonMark support ----
+  marked.setOptions({
+    gfm: true,
+    breaks: true,
+    pedantic: false,
+    smartLists: true,
+    smartypants: true,
+    xhtml: false,
+  });
+
+  // ============================================================
+  // MARKDOWN RENDERER — using marked + DOMPurify
+  // ============================================================
+
+  function renderMarkdown(markdown) {
+    if (!markdown || markdown.trim() === '') return '';
+
+    try {
+      const html = marked.parse(markdown);
+      const clean = DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+        FORBID_TAGS: ['style'],
+        FORBID_ATTR: ['style'],
+        ADD_ATTR: ['target', 'rel'],
+      });
+      return clean;
+    } catch (e) {
+      console.warn('Markdown parse error:', e);
+      return `<div style="color:#b71c1c;padding:1rem;">⚠️ Error parsing markdown: ${e.message}</div>`;
+    }
+  }
+
+  // ============================================================
+  // CONFIGURATION
+  // ============================================================
+
+  const CONFIG = {
+    maxVersions: 50,
+    maxRetries: 3,
+    retryDelay: 500
+  };
+
+  // ============================================================
+  // STATE
+  // ============================================================
+
+  let rootHandle = null;
+  let pagesDirHandle = null;
+  let db = null;
+  let wikiPages = [];
+  let categories = [];
+  let currentPageId = null;
+  let isEditing = false;
+  let editingPageId = null;
+  let editorInitialized = false;
+  let currentHistoryPageId = null;
+  let isSyncing = false;
+
+  // ============================================================
+  // DOM REFS
+  // ============================================================
+
+  const $ = id => document.getElementById(id);
+  const modal = $('pageModal');
+  const historyModal = $('historyModal');
+  const modalTitle = $('modalTitle');
+  const pageTitleInput = $('pageTitleInput');
+  const pageCategory = $('pageCategory');
+  const pageContent = $('pageContent');
+  const termsContainer = $('termsContainer');
+  const relatedContainer = $('relatedContainer');
+  const savePageBtn = $('savePageBtn');
+  const changeDescription = $('changeDescription');
+
+  // ============================================================
+  // HELPER: GET LATEST VERSION CONTENT
+  // ============================================================
+
+  function getLatestVersionContent(page) {
+    if (!page) return '';
+    if (page.versions && page.versions.length > 0) {
+      const latest = page.versions[page.versions.length - 1];
+      return latest.content || page.content;
+    }
+    return page.content || '';
+  }
+
+  // ============================================================
+  // DATABASE INITIALIZATION
+  // ============================================================
+
+  async function initDB() {
+    try {
+      db = localforage.createInstance({
+        name: 'USBWiki',
+        storeName: 'pages'
+      });
+      await db.setItem('_test', 'ok');
+      await db.removeItem('_test');
+      console.log('✅ IndexedDB initialized');
+      return true;
+    } catch (e) {
+      console.error('❌ Failed to initialize IndexedDB:', e);
+      showNotification('⚠️ Storage initialization failed.', true);
+      return false;
+    }
+  }
+
+  // ============================================================
+  // FOLDER SELECTION
+  // ============================================================
+
+  let isSelectingFolder = false;
+
+  async function selectFolder() {
+    if (isSelectingFolder) return;
+    isSelectingFolder = true;
+    try {
+      rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+
+      let pagesFound = false;
+      try {
+        pagesDirHandle = await rootHandle.getDirectoryHandle('pages', { create: true });
+        pagesFound = true;
+        console.log('📁 Found "pages" directory');
+      } catch (e) {
+        console.log('📁 No "pages" directory found, using root');
+        pagesDirHandle = rootHandle;
+      }
+
+      // Clear database before scanning new folder
+      if (db) {
+        const keys = await db.keys();
+        for (const key of keys) {
+          if (key !== '_test') {
+            await db.removeItem(key);
+          }
+        }
+        console.log('🗑️ Cleared database for new folder');
+      }
+
+      await discoverCategories(pagesDirHandle);
+      console.log('📁 Categories discovered:', categories);
+
+      for (const cat of categories) {
+        try {
+          await pagesDirHandle.getDirectoryHandle(cat, { create: true });
+          console.log('📁 Ensured folder exists:', cat);
+        } catch (e) {
+          console.warn('Could not create folder ' + cat + ':', e);
+        }
+      }
+
+      await syncFromFileSystem(true);
+
+      updateFolderStatus(true);
+      updateCategoryDropdown();
+      $('resyncBtn').disabled = false;
+      $('resetBtn').disabled = false;
+
+      showNotification('✅ Connected to: ' + rootHandle.name + (pagesFound ? ' (pages/)' : ''), false, 'success');
+
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('Folder selection cancelled');
+      } else {
+        console.error('❌ Folder selection error:', e);
+        showNotification('❌ Failed to select folder: ' + e.message, true);
+      }
+    } finally {
+      isSelectingFolder = false;
+    }
+  }
+
+  async function discoverCategories(dirHandle) {
+    categories = [];
+    try {
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'directory') {
+          try {
+            const subDir = await dirHandle.getDirectoryHandle(entry.name);
+            let hasMdFiles = false;
+            for await (const subEntry of subDir.values()) {
+              if (subEntry.kind === 'file' && subEntry.name.endsWith('.md')) {
+                hasMdFiles = true;
+                break;
+              }
+            }
+            if (hasMdFiles) {
+              categories.push(entry.name);
+              console.log('📁 Found category with .md files:', entry.name);
+            }
+          } catch (e) {
+            console.warn('Could not check directory ' + entry.name + ':', e);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error discovering categories:', e);
+    }
+
+    if (categories.length === 0) {
+      try {
+        for await (const entry of dirHandle.values()) {
+          if (entry.kind === 'directory') {
+            categories.push(entry.name);
+            console.log('📁 Found directory (no .md files yet):', entry.name);
+          }
+        }
+      } catch (e) {
+        console.warn('Error scanning directories:', e);
+      }
+    }
+
+    if (categories.length === 0) {
+      categories = ['general', 'radio-room', 'front-counter', 'activations'];
+      console.log('📁 Using default categories:', categories);
+    }
+
+    categories.sort();
+    console.log('📁 Final categories list:', categories);
+    updateCategoryDropdown();
+  }
+
+  function updateCategoryDropdown() {
+    const select = pageCategory;
+    select.innerHTML = '';
+    categories.forEach(cat => {
+      const option = document.createElement('option');
+      option.value = cat;
+      const label = cat.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      option.textContent = `📁 ${label}`;
+      select.appendChild(option);
+    });
+  }
+
+  // ============================================================
+  // FILE SYSTEM ACCESS API
+  // ============================================================
+
+  async function getFileHandle(category, filename) {
+    if (!pagesDirHandle) return null;
+    try {
+      const catHandle = await pagesDirHandle.getDirectoryHandle(category, { create: true });
+      return await catHandle.getFileHandle(filename, { create: true });
+    } catch (e) { return null; }
+  }
+
+  async function readFile(category, filename) {
+    const fh = await getFileHandle(category, filename);
+    if (!fh) return null;
+    try { const file = await fh.getFile(); return await file.text(); } catch (e) { return null; }
+  }
+
+  async function writeFile(category, filename, content) {
+    if (!pagesDirHandle) {
+      showNotification('❌ No folder selected', true);
+      return false;
+    }
+
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= CONFIG.maxRetries; attempt++) {
+      try {
+        const catHandle = await pagesDirHandle.getDirectoryHandle(category, { create: true });
+        const fileHandle = await catHandle.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable({ keepExistingData: false });
+        await writable.write(content);
+        await writable.close();
+        console.log(`✅ File written successfully: ${filename}`);
+        return true;
+      } catch (e) {
+        lastError = e;
+        console.warn(`⚠️ Write attempt ${attempt} failed:`, e.message);
+        if (attempt < CONFIG.maxRetries) {
+          await new Promise(r => setTimeout(r, CONFIG.retryDelay * attempt));
+        }
+      }
+    }
+
+    console.error('❌ All write attempts failed:', lastError);
+    if (lastError) {
+      showNotification(`❌ Failed to save: ${lastError.message}`, true);
+    }
+    return false;
+  }
+
+  async function listFiles() {
+    if (!pagesDirHandle) return [];
+    if (categories.length === 0) {
+      console.warn('No categories found, returning empty list');
+      return [];
+    }
+
+    const allFiles = [];
+    for (const cat of categories) {
+      try {
+        const catHandle = await pagesDirHandle.getDirectoryHandle(cat);
+        for await (const entry of catHandle.values()) {
+          if (entry.kind === 'file' && entry.name.endsWith('.md')) {
+            let modTime = null;
+            let fileSize = 0;
+            try {
+              const fileHandle = await catHandle.getFileHandle(entry.name);
+              const file = await fileHandle.getFile();
+              modTime = file.lastModified;
+              fileSize = file.size;
+            } catch (e) {
+              console.warn('Could not get file info for ' + entry.name, e);
+            }
+            allFiles.push({ name: entry.name, category: cat, modTime: modTime, size: fileSize });
+          }
+        }
+      } catch (e) {
+        try {
+          await pagesDirHandle.getDirectoryHandle(cat, { create: true });
+          console.log('📁 Created folder:', cat);
+        } catch (e2) {
+          console.warn('Could not create folder ' + cat + ':', e2);
+        }
+      }
+    }
+    console.log('📄 listFiles returning:', allFiles);
+    return allFiles;
+  }
+
+  // ============================================================
+  // SYNC FROM FILE SYSTEM → DATABASE — FIXED
+  // ============================================================
+
+  async function syncFromFileSystem(force = false) {
+    if (!pagesDirHandle) return 0;
+    if (isSyncing) return 0;
+
+    isSyncing = true;
+    $('resyncBtn').disabled = true;
+    $('resyncBtn').textContent = '⏳ Syncing...';
+    updateSyncStatus('syncing');
+
+    try {
+      if (categories.length === 0) {
+        await discoverCategories(pagesDirHandle);
+      }
+
+      for (const cat of categories) {
+        try {
+          await pagesDirHandle.getDirectoryHandle(cat, { create: true });
+        } catch (e) {
+          console.warn('Could not create folder ' + cat + ':', e);
+        }
+      }
+
+      const files = await listFiles();
+      console.log('📄 Files found for sync:', files);
+
+      let syncedCount = 0;
+      let deletedCount = 0;
+      let resetCount = 0;
+
+      const existingFileKeys = new Set();
+
+      for (const file of files) {
+        try {
+          const content = await readFile(file.category, file.name);
+          if (content === null) continue;
+
+          const baseName = file.name.replace(/\.md$/, '');
+          const versionMatch = baseName.match(/-v(\d+)$/);
+          const isVersioned = versionMatch !== null;
+          const baseTitle = isVersioned ? baseName.replace(/-v\d+$/, '') : baseName;
+          const title = baseTitle.replace(/-/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+          const fileVersion = isVersioned ? parseInt(versionMatch[1], 10) : 1;
+
+          existingFileKeys.add(baseTitle);
+
+          let changeDesc = '';
+          let cleanContent = content;
+          if (content.startsWith('<!-- CHANGE: ')) {
+            const endIdx = content.indexOf(' -->');
+            if (endIdx > 0) {
+              changeDesc = content.substring(13, endIdx);
+              cleanContent = content.substring(endIdx + 4);
+            }
+          }
+
+          // Normalize content - remove trailing whitespace that could cause false positives
+          cleanContent = cleanContent.replace(/\s+$/g, '');
+
+          let page = await db.getItem(baseTitle);
+
+          if (!page) {
+            // New page - create it with version 1
+            console.log(`📄 New page detected: ${baseTitle}`);
+            page = {
+              id: baseTitle,
+              title: title,
+              category: file.category,
+              content: cleanContent,
+              versions: [],
+              version: 1,
+              filename: file.name,
+              baseName: baseTitle,
+              lastModified: file.modTime,
+              contentHash: await hashContent(cleanContent)
+            };
+
+            const versionObj = {
+              id: `${baseTitle}-v1`,
+              version: 1,
+              filename: file.name,
+              content: cleanContent,
+              changeDesc: changeDesc || 'Initial creation',
+              timestamp: new Date().toISOString()
+            };
+            page.versions.push(versionObj);
+
+            await db.setItem(baseTitle, page);
+            syncedCount++;
+
+            if (!categories.includes(file.category)) {
+              categories.push(file.category);
+              categories.sort();
+              updateCategoryDropdown();
+            }
+          } else {
+            // Existing page - check if content has ACTUALLY changed
+            const currentHash = await hashContent(cleanContent);
+            const storedHash = page.contentHash || '';
+
+            // Compare content directly as well (double-check)
+            const storedContent = page.content || '';
+            const contentChanged = (currentHash !== storedHash) || (cleanContent !== storedContent);
+
+            if (contentChanged) {
+              console.log(`📄 Content changed: ${baseTitle}`);
+              
+              // Determine next version number
+              const versions = page.versions || [];
+              const nextVersion = versions.length > 0 ? versions[versions.length - 1].version + 1 : 1;
+              
+              // Update the page
+              page.content = cleanContent;
+              page.category = file.category;
+              page.filename = file.name;
+              page.lastModified = file.modTime;
+              page.contentHash = currentHash;
+              page.version = nextVersion;
+
+              // Add new version
+              const versionObj = {
+                id: `${baseTitle}-v${nextVersion}`,
+                version: nextVersion,
+                filename: file.name,
+                content: cleanContent,
+                changeDesc: changeDesc || `Version ${nextVersion}`,
+                timestamp: new Date().toISOString()
+              };
+              page.versions.push(versionObj);
+
+              if (CONFIG.maxVersions > 0 && page.versions.length > CONFIG.maxVersions) {
+                page.versions = page.versions.slice(-CONFIG.maxVersions);
+              }
+
+              await db.setItem(baseTitle, page);
+              syncedCount++;
+            } else if (file.modTime && page.lastModified !== file.modTime) {
+              // Just update metadata if content hasn't changed
+              page.lastModified = file.modTime;
+              await db.setItem(baseTitle, page);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to process ' + file.name + ':', e);
+        }
+      }
+
+      // Check for deleted files
+      const dbKeys = await db.keys();
+      for (const key of dbKeys) {
+        if (key === '_test') continue;
+        if (!existingFileKeys.has(key)) {
+          const page = await db.getItem(key);
+          if (page) {
+            console.log(`🗑️ Page deleted from file system: ${key}`);
+            await db.removeItem(key);
+            deletedCount++;
+          }
+        }
+      }
+
+      // If force flag is true, ensure all pages have valid content
+      if (force) {
+        // Re-validate all pages to ensure integrity
+        const allKeys = await db.keys();
+        for (const key of allKeys) {
+          if (key === '_test') continue;
+          const page = await db.getItem(key);
+          if (page && page.versions && page.versions.length > 0) {
+            const latest = page.versions[page.versions.length - 1];
+            if (latest.content !== page.content) {
+              page.content = latest.content;
+              await db.setItem(key, page);
+              resetCount++;
+            }
+          }
+        }
+      }
+
+      await loadPages();
+
+      let msg = '✅ Sync complete';
+      const changes = [];
+      if (syncedCount > 0) changes.push(`${syncedCount} updated`);
+      if (deletedCount > 0) changes.push(`${deletedCount} removed`);
+      if (resetCount > 0) changes.push(`${resetCount} repaired`);
+      if (changes.length > 0) {
+        msg += `: ${changes.join(', ')}`;
+      } else {
+        msg += ' — no changes detected';
+      }
+      showNotification(msg, false, 'success');
+      console.log(`✅ Sync complete: ${syncedCount} updated, ${deletedCount} deleted, ${resetCount} repaired`);
+
+      return syncedCount + deletedCount + resetCount;
+
+    } catch (e) {
+      console.error('❌ Sync error:', e);
+      showNotification('❌ Sync failed: ' + e.message, true);
+      return 0;
+    } finally {
+      isSyncing = false;
+      $('resyncBtn').disabled = false;
+      $('resyncBtn').textContent = '🔄 Resync';
+      updateSyncStatus('online');
+    }
+  }
+
+  // ============================================================
+  // HASH CONTENT - FULL CONTENT HASH (FIXED)
+  // ============================================================
+
+  async function hashContent(content) {
+    if (!content) return '';
+    // Hash the ENTIRE content, not just the first 1000 characters
+    try {
+      const data = new TextEncoder().encode(content);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashHex = Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+      return `${content.length}:${hashHex}`;
+    } catch (e) {
+      // Fallback if crypto.subtle isn't available
+      let hash = 0;
+      for (let i = 0; i < content.length; i++) {
+        const char = content.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return `${content.length}:${hash}`;
+    }
+  }
+
+  // ============================================================
+  // RESET DATABASE - NEW FUNCTION FOR HARD RESET
+  // ============================================================
+
+  async function resetDatabase() {
+    if (!db) {
+      showNotification('⚠️ Database not initialized', true);
+      return;
+    }
+
+    if (!confirm(
+      '⚠️ This will DELETE ALL LOCAL DATA and re-sync from the USB.\n\n' +
+      'This is useful if you\'re seeing version mismatches or ghost changes.\n\n' +
+      'Continue?'
+    )) return;
+
+    try {
+      showNotification('🗑️ Clearing local database...', false);
+      
+      // Clear all pages from IndexedDB
+      const keys = await db.keys();
+      let deletedCount = 0;
+      for (const key of keys) {
+        if (key !== '_test') {
+          await db.removeItem(key);
+          deletedCount++;
+        }
+      }
+      
+      console.log(`🗑️ Removed ${deletedCount} items from database`);
+      
+      // Reset state
+      wikiPages = [];
+      currentPageId = null;
+      
+      // Re-sync from file system
+      showNotification('🔄 Re-syncing from USB...', false);
+      await syncFromFileSystem(true);
+      
+      showNotification(`✅ Reset complete! Re-synced ${wikiPages.length} pages`, false, 'success');
+      
+    } catch (e) {
+      console.error('❌ Reset failed:', e);
+      showNotification('❌ Reset failed: ' + e.message, true);
+    }
+  }
+
+  // ============================================================
+  // PAGE LOADING FROM DATABASE
+  // ============================================================
+
+  async function loadPages() {
+    if (!db) await initDB();
+    if (!db) return;
+
+    wikiPages = [];
+    const keys = await db.keys();
+
+    for (const key of keys) {
+      if (key === '_test') continue;
+      try {
+        const page = await db.getItem(key);
+        if (page) {
+          wikiPages.push(page);
+        }
+      } catch (e) {
+        console.error(`Failed to load page ${key}:`, e);
+      }
+    }
+
+    wikiPages.sort((a, b) => {
+      const ca = categories.indexOf(a.category);
+      const cb = categories.indexOf(b.category);
+      if (ca !== cb) return ca - cb;
+      return a.title.localeCompare(b.title);
+    });
+
+    const contentArea = $('contentArea');
+    const scrollPos = contentArea.scrollTop;
+
+    renderNav();
+    if (wikiPages.length > 0) {
+      if (!currentPageId || !wikiPages.find(p => p.id === currentPageId)) {
+        showPage(wikiPages[0]);
+      } else {
+        const currentPage = wikiPages.find(p => p.id === currentPageId);
+        if (currentPage) {
+          showPage(currentPage);
+        }
+      }
+    } else {
+      showWelcome();
+    }
+
+    contentArea.scrollTop = scrollPos;
+
+    updateFolderStatus(true);
+    updateCategoryDropdown();
+  }
+
+  // ============================================================
+  // PAGE SAVING
+  // ============================================================
+
+  async function saveNewPage(title, category, content, changeDesc = '') {
+    if (!db) await initDB();
+    if (!db) {
+      showNotification('❌ Database not initialized', true);
+      return false;
+    }
+
+    if (!pagesDirHandle) {
+      showNotification('❌ No folder selected', true);
+      return false;
+    }
+
+    const baseName = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    let existing = wikiPages.find(p => p.id === baseName);
+    let version = 1;
+    let filename = `${baseName}.md`;
+
+    if (existing) {
+      const versions = existing.versions || [];
+      version = versions.length > 0 ? versions[versions.length - 1].version + 1 : 2;
+      filename = `${baseName}-v${version}.md`;
+    }
+
+    let fullContent = content;
+    if (changeDesc) {
+      fullContent = `<!-- CHANGE: ${changeDesc} -->\n` + content;
+    }
+
+    const fileSuccess = await writeFile(category, filename, fullContent);
+    if (!fileSuccess) {
+      return false;
+    }
+
+    if (version > 1) {
+      const pointerSuccess = await writeFile(category, `${baseName}.md`, fullContent);
+      if (!pointerSuccess) {
+        showNotification(
+          `⚠️ Saved v${version} but couldn't update the "latest" pointer file - ` +
+          `re-open and save again to fix this before syncing.`, true);
+      }
+    }
+
+    const versionObj = {
+      id: `${baseName}-v${version}`,
+      version: version,
+      filename: filename,
+      content: fullContent,
+      changeDesc: changeDesc || (version === 1 ? 'Initial creation' : `Version ${version}`),
+      timestamp: new Date().toISOString()
+    };
+
+    const page = {
+      id: baseName,
+      title: title,
+      category: category,
+      content: fullContent,
+      version: version,
+      filename: filename,
+      baseName: baseName,
+      versions: [],
+      lastModified: Date.now(),
+      contentHash: await hashContent(fullContent)
+    };
+
+    if (existing) {
+      page.versions = [...(existing.versions || [])];
+      page.versions.push(versionObj);
+      if (CONFIG.maxVersions > 0 && page.versions.length > CONFIG.maxVersions) {
+        page.versions = page.versions.slice(-CONFIG.maxVersions);
+      }
+      await db.setItem(baseName, page);
+    } else {
+      page.versions.push(versionObj);
+      await db.setItem(baseName, page);
+    }
+
+    await loadPages();
+    showNotification(`✅ "${title}" saved as v${version}`, false, 'success');
+    return true;
+  }
+
+  async function updatePage(pageId, newContent, changeDesc = '') {
+    if (!db) return false;
+
+    if (!pagesDirHandle) {
+      showNotification('❌ No folder selected', true);
+      return false;
+    }
+
+    const page = wikiPages.find(p => p.id === pageId);
+    if (!page) return false;
+
+    const baseName = page.baseName;
+    const versions = page.versions || [];
+    const newVersion = versions.length > 0 ? versions[versions.length - 1].version + 1 : 2;
+    const newFilename = `${baseName}-v${newVersion}.md`;
+
+    let fullContent = newContent;
+    if (changeDesc) {
+      fullContent = `<!-- CHANGE: ${changeDesc} -->\n` + newContent;
+    }
+
+    const fileSuccess = await writeFile(page.category, newFilename, fullContent);
+    if (!fileSuccess) {
+      return false;
+    }
+
+    const pointerSuccess = await writeFile(page.category, `${baseName}.md`, fullContent);
+    if (!pointerSuccess) {
+      showNotification(
+        `⚠️ Saved v${newVersion} but couldn't update the "latest" pointer file - ` +
+        `re-open and save again to fix this before syncing.`, true);
+    }
+
+    const versionObj = {
+      id: `${baseName}-v${newVersion}`,
+      version: newVersion,
+      filename: newFilename,
+      content: fullContent,
+      changeDesc: changeDesc || `Version ${newVersion}`,
+      timestamp: new Date().toISOString()
+    };
+
+    const updatedPage = { ...page };
+    updatedPage.content = fullContent;
+    updatedPage.version = newVersion;
+    updatedPage.filename = newFilename;
+    updatedPage.versions = [...versions, versionObj];
+    updatedPage.lastModified = Date.now();
+    updatedPage.contentHash = await hashContent(fullContent);
+
+    if (CONFIG.maxVersions > 0 && updatedPage.versions.length > CONFIG.maxVersions) {
+      updatedPage.versions = updatedPage.versions.slice(-CONFIG.maxVersions);
+    }
+
+    await db.setItem(baseName, updatedPage);
+    await loadPages();
+    showNotification(`✅ Updated to v${newVersion}`, false, 'success');
+    return true;
+  }
+
+  // ============================================================
+  // RENDER NAVIGATION
+  // ============================================================
+
+  function renderNav() {
+    const container = $('navTree');
+
+    let html = `
+      <div class="nav-category" style="margin-top:0;">🏠 Navigation</div>
+      <div class="nav-item home-link-nav" data-id="home" role="button" tabindex="0">🏠 Home</div>
+    `;
+
+    const grouped = {};
+    wikiPages.forEach(p => {
+      if (!grouped[p.category]) grouped[p.category] = [];
+      grouped[p.category].push(p);
+    });
+
+    const allCategories = new Set([...categories, ...Object.keys(grouped)]);
+    const sortedCategories = Array.from(allCategories).sort();
+
+    for (const cat of sortedCategories) {
+      const label = cat.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      html += `<div class="nav-category">📁 ${escapeHtml(label)}</div>`;
+
+      if (!grouped[cat] || grouped[cat].length === 0) {
+        html += `<div style="color:#4b6f85;font-size:0.75rem;padding:0.2rem 0.6rem;font-style:italic;">No pages yet</div>`;
+      } else {
+        grouped[cat].forEach(p => {
+          const vLabel = p.version > 1 ? `<span class="badge">v${p.version}</span>` : '';
+          html +=
+            `<div class="nav-item" data-id="${escapeHtml(p.id)}" data-category="${escapeHtml(cat)}" role="button" tabindex="0"><span class="nav-item-title">${escapeHtml(p.title)}</span>${vLabel}</div>`;
+        });
+      }
+    }
+    container.innerHTML = html;
+
+    container.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', function(e) {
+        if (this.dataset.id === 'home') {
+          showWelcome();
+          document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        } else {
+          const page = wikiPages.find(p => p.id === this.dataset.id);
+          if (page) {
+            showPage(page);
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            this.classList.add('active');
+          }
+        }
+        $('sidebar').classList.remove('open');
+        $('sidebarScrim').classList.remove('active');
+      });
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.click();
+        }
+      });
+    });
+  }
+
+  // ============================================================
+  // SHOW PAGE — uses marked renderer
+  // ============================================================
+
+  function showPage(page) {
+    currentPageId = page.id;
+    $('pageTitle').textContent = page.title;
+    const label = page.category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    $('crumbCat').textContent = `📁 ${label}`;
+
+    const displayContent = getLatestVersionContent(page);
+    $('contentArea').innerHTML = renderMarkdown(displayContent);
+    $('contentArea').dataset.currentId = page.id;
+
+    const badge = $('versionBadge');
+    if (page.version > 1) {
+      badge.textContent = `v${page.version}`;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+
+    const historyBtn = $('historyBtn');
+    if (page.versions && page.versions.length > 1) {
+      historyBtn.style.display = 'inline-flex';
+    } else {
+      historyBtn.style.display = 'none';
+    }
+
+    $('editBtn').hidden = false;
+    $('saveBtn').hidden = true;
+
+    const contentArea = $('contentArea');
+    contentArea.scrollTop = 0;
+  }
+
+  function showWelcome() {
+    currentPageId = null;
+    $('pageTitle').textContent = 'Welcome';
+    $('crumbCat').textContent = '🏠 Home';
+
+    let folderCards = '';
+    const sortedCategories = [...categories].sort();
+    sortedCategories.forEach(cat => {
+      const label = cat.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const pageCount = wikiPages.filter(p => p.category === cat).length;
+      const icon = getFolderIcon(cat);
+      folderCards += `
+        <div style="background:#f5f8fc;padding:1rem;border-radius:12px;border:1px solid #e2eaf2;text-align:center;">
+          <div style="font-size:2rem;">${icon}</div>
+          <div style="font-weight:600;margin:0.3rem 0;">${escapeHtml(label)}</div>
+          <div style="font-size:0.85rem;color:#4b6f85;">${pageCount} page${pageCount !== 1 ? 's' : ''}</div>
+        </div>
+      `;
+    });
+
+    $('contentArea').innerHTML = `
+      <div class="empty-state" style="padding: 3rem 2rem;">
+        <div class="big-icon">🏠</div>
+        <h2 style="color: #0a1e2f;">Welcome to USB Wiki</h2>
+        <p style="font-size:1.1rem;color:#2b7a8a;margin-bottom:1.5rem;">Marine Operations Knowledge Base</p>
+        ${rootHandle ? `
+          <div style="background:#e8f5e9;padding:0.5rem 1rem;border-radius:8px;margin-bottom:1.5rem;display:inline-block;">
+            <span style="color:#2e7d32;">📂 Connected to: <strong>${escapeHtml(rootHandle.name)}</strong>${pagesDirHandle !== rootHandle ? ' (pages/)' : ''}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;max-width:700px;margin:0 auto;text-align:left;">
+            ${folderCards}
+          </div>
+          <p style="margin-top:1.5rem;font-size:0.9rem;color:#6b8aa0;">
+            📄 ${wikiPages.length} page${wikiPages.length !== 1 ? 's' : ''} total
+          </p>
+        ` : `
+          <p style="margin-top:1rem;font-size:0.9rem;color:#6b8aa0;">
+            📁 Click <strong>📁 Select</strong> in the sidebar to choose your folder
+          </p>
+        `}
+      </div>
+    `;
+
+    $('contentArea').scrollTop = 0;
+    $('versionBadge').style.display = 'none';
+    $('editBtn').hidden = true;
+    $('saveBtn').hidden = true;
+    $('historyBtn').style.display = 'none';
+  }
+
+  function getFolderIcon(category) {
+    const icons = {
+      'radio-room': '📻',
+      'front-counter': '🧾',
+      'activations': '⚡',
+      'general': '📁'
+    };
+    return icons[category] || '📂';
+  }
+
+  function updateFolderStatus(online) {
+    const dot = $('statusDot'),
+      text = $('statusText');
+    if (online && rootHandle) {
+      dot.className = 'dot online';
+      text.textContent = `📁 ${rootHandle.name}`;
+      $('folderBtn').textContent = '📁 Connected';
+      $('folderBtn').classList.add('active');
+      $('resyncBtn').disabled = false;
+      $('resetBtn').disabled = false;
+    } else if (rootHandle) {
+      dot.className = 'dot error';
+      text.textContent = '⚠️ Folder error';
+      $('folderBtn').textContent = '📁 Select';
+      $('folderBtn').classList.remove('active');
+      $('resyncBtn').disabled = true;
+      $('resetBtn').disabled = true;
+    } else {
+      dot.className = 'dot offline';
+      text.textContent = 'No folder selected';
+      $('folderBtn').textContent = '📁 Select';
+      $('folderBtn').classList.remove('active');
+      $('resyncBtn').disabled = true;
+      $('resetBtn').disabled = true;
+    }
+  }
+
+  function updateSyncStatus(status) {
+    const dot = $('statusDot');
+    if (status === 'syncing') {
+      dot.className = 'dot syncing';
+      $('statusText').textContent = '🔄 Syncing...';
+    } else if (status === 'online') {
+      if (rootHandle) {
+        dot.className = 'dot online';
+        $('statusText').textContent = `📁 ${rootHandle.name}`;
+      }
+    }
+  }
+
+  function filterNav(query) {
+    const items = document.querySelectorAll('.nav-item');
+    const q = query.toLowerCase().trim();
+    items.forEach(el => {
+      const titleEl = el.querySelector('.nav-item-title');
+      const haystack = (titleEl ? titleEl.textContent : el.textContent).toLowerCase();
+      el.style.display = haystack.includes(q) ? 'block' : 'none';
+    });
+  }
+
+  // ============================================================
+  // TERMS & RELATED PAGES BUILDERS
+  // ============================================================
+
+  function addTermRow(term = '', definition = '') {
+    const row = document.createElement('div');
+    row.className = 'term-row';
+    row.innerHTML = `
+      <input type="text" class="term-term" placeholder="Term" style="flex:0.4;" value="${escapeHtml(term)}">
+      <input type="text" class="term-definition" placeholder="Definition" style="flex:0.6;" value="${escapeHtml(definition)}">
+      <button class="btn-remove" onclick="removeTermRow(this)">✕</button>
+    `;
+    termsContainer.appendChild(row);
+  }
+
+  function removeTermRow(btn) {
+    const container = termsContainer;
+    if (container.children.length <= 1) {
+      showNotification('⚠️ At least one term row is required.', true);
+      return;
+    }
+    btn.closest('.term-row').remove();
+  }
+
+  function addRelatedRow(page = '') {
+    const row = document.createElement('div');
+    row.className = 'term-row';
+    row.innerHTML = `
+      <input type="text" class="related-page" placeholder="Page title (e.g. DSC Protocol)" style="flex:1;" value="${escapeHtml(page)}">
+      <button class="btn-remove" onclick="removeRelatedRow(this)">✕</button>
+    `;
+    relatedContainer.appendChild(row);
+  }
+
+  function removeRelatedRow(btn) {
+    const container = relatedContainer;
+    if (container.children.length <= 1) {
+      showNotification('⚠️ At least one related page row is required.', true);
+      return;
+    }
+    btn.closest('.term-row').remove();
+  }
+
+  // ============================================================
+  // BUILD MARKDOWN FROM FORM
+  // ============================================================
+
+  function buildMarkdown(title, content, terms, related, changeDesc = '') {
+    let md = '';
+
+    if (changeDesc) {
+      md += `<!-- CHANGE: ${changeDesc} -->\n`;
+    }
+
+    md += `# ${title}\n\n`;
+
+    if (content) {
+      md += content + '\n\n';
+    }
+
+    if (terms && terms.length > 0 && terms.some(t => t.term || t.definition)) {
+      md += `## Key Terms\n`;
+      md += `| Term | Definition |\n`;
+      md += `|------|------------|\n`;
+      terms.forEach(t => {
+        if (t.term || t.definition) {
+          md += `| ${t.term || ''} | ${t.definition || ''} |\n`;
+        }
+      });
+      md += `\n`;
+    }
+
+    md += `## Related Pages\n`;
+    const hasRelated = related && related.length > 0 && related.some(r => r && r.trim());
+    if (hasRelated) {
+      related.forEach(r => {
+        if (r && r.trim()) {
+          const link = r.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+          md += `- [${r}](${link})\n`;
+        }
+      });
+    } else {
+      md += `- [🏠 Home]()\n`;
+    }
+
+    return md;
+  }
+
+  // ============================================================
+  // PARSE MARKDOWN INTO FORM DATA
+  // ============================================================
+
+  function parseMarkdown(content) {
+    const result = {
+      title: '',
+      content: '',
+      terms: [],
+      related: [],
+      changeDesc: ''
+    };
+
+    if (!content) return result;
+
+    let cleanContent = content;
+
+    if (content.startsWith('<!-- CHANGE: ')) {
+      const endIdx = content.indexOf(' -->');
+      if (endIdx > 0) {
+        result.changeDesc = content.substring(13, endIdx);
+        cleanContent = content.substring(endIdx + 4);
+      }
+    }
+
+    cleanContent = cleanContent.replace(/<!--[\s\S]*?-->/g, '');
+    cleanContent = cleanContent.replace(/&nbsp;/g, ' ');
+
+    const lines = cleanContent.split('\n');
+    let state = 'content';
+    let contentLines = [];
+    let termLines = [];
+    let relatedLines = [];
+    let title = '';
+    let foundTitle = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      if (!trimmed && !foundTitle && contentLines.length === 0) continue;
+
+      if (trimmed.startsWith('# ') && !foundTitle) {
+        title = trimmed.substring(2).trim();
+        foundTitle = true;
+        continue;
+      }
+
+      if (trimmed.startsWith('## ')) {
+        const section = trimmed.substring(3).trim().toLowerCase();
+
+        if (state === 'keyTerms' && termLines.length > 0) {
+          result.terms = parseKeyTerms(termLines);
+          termLines = [];
+        }
+        if (state === 'relatedPages' && relatedLines.length > 0) {
+          result.related = parseRelated(relatedLines);
+          relatedLines = [];
+        }
+
+        if (section === 'key terms') {
+          state = 'keyTerms';
+          continue;
+        } else if (section === 'related pages') {
+          state = 'relatedPages';
+          continue;
+        } else {
+          state = 'content';
+          contentLines.push(line);
+          continue;
+        }
+      }
+
+      switch (state) {
+        case 'content':
+          if (trimmed || contentLines.length > 0) {
+            contentLines.push(line);
+          }
+          break;
+        case 'keyTerms':
+          if (trimmed.includes('|') && !trimmed.includes('---')) {
+            const lower = trimmed.toLowerCase();
+            if (!lower.includes('term') && !lower.includes('definition')) {
+              termLines.push(trimmed);
+            }
+          }
+          break;
+        case 'relatedPages':
+          if (trimmed.startsWith('- [')) {
+            const match = trimmed.match(/\[([^\]]+)\]\(([^\)]*)\)/);
+            if (match) {
+              if (!match[1].includes('Home') && !match[1].includes('🏠')) {
+                relatedLines.push(trimmed);
+              }
+            }
+          }
+          break;
+      }
+    }
+
+    if (state === 'keyTerms' && termLines.length > 0) {
+      result.terms = parseKeyTerms(termLines);
+    }
+    if (state === 'relatedPages' && relatedLines.length > 0) {
+      result.related = parseRelated(relatedLines);
+    }
+
+    result.title = title || 'Untitled';
+    result.content = contentLines.join('\n').trim();
+
+    return result;
+  }
+
+  function parseKeyTerms(lines) {
+    const terms = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.includes('|')) continue;
+
+      const parts = trimmed.split('|').map(s => s.trim()).filter(s => s);
+      if (parts.length < 2) continue;
+
+      const lower = parts.map(p => p.toLowerCase());
+      if (lower.some(p => p === 'term') || lower.some(p => p === 'definition')) continue;
+      if (parts.some(p => p.includes('---'))) continue;
+
+      const term = parts[0].trim();
+      const definition = parts.slice(1).join(' ').trim();
+      if (term && definition) {
+        terms.push({ term, definition });
+      }
+    }
+    return terms;
+  }
+
+  function parseRelated(lines) {
+    const related = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('- [')) {
+        const match = trimmed.match(/\[([^\]]+)\]\(([^\)]*)\)/);
+        if (match) {
+          if (!match[1].includes('Home') && !match[1].includes('🏠')) {
+            related.push(match[1]);
+          }
+        }
+      }
+    }
+    return related;
+  }
+
+  // ============================================================
+  // HISTORY
+  // ============================================================
+
+  function openHistory(pageId) {
+    const page = wikiPages.find(p => p.id === pageId);
+    if (!page) return;
+
+    currentHistoryPageId = pageId;
+    const versions = page.versions || [];
+
+    $('historyTitle').textContent = `📜 History: ${page.title}`;
+    $('historySubtitle').textContent = `${versions.length} version${versions.length > 1 ? 's' : ''} • Latest: v${page.version}`;
+
+    const list = $('historyList');
+    let html = '';
+
+    const sorted = [...versions].reverse();
+    sorted.forEach((v, index) => {
+      const isCurrent = v.version === page.version;
+      const date = new Date(v.timestamp || Date.now());
+      const dateStr = date.toLocaleString();
+
+      html += `
+        <div class="history-item">
+          <div class="version-info">
+            <span class="version-number">v${v.version}</span>
+            ${isCurrent ? '<span class="version-current">Current</span>' : ''}
+            <span class="version-date">${escapeHtml(dateStr)}</span>
+          </div>
+          <div style="flex:1;font-size:0.85rem;color:#4b6f85;margin:0.3rem 0;">
+            ${escapeHtml(v.changeDesc) || `Version ${v.version}`}
+          </div>
+          <div>
+            ${!isCurrent ? `<button class="btn-rollback" onclick="rollbackVersion('${escapeHtml(pageId)}', ${Number(v.version)})">↩ Rollback</button>` : ''}
+          </div>
+        </div>
+      `;
+    });
+
+    list.innerHTML = html;
+    openModalA11y('historyModal');
+  }
+
+  async function rollbackVersion(pageId, versionNum) {
+    if (!confirm(`Rollback to version ${versionNum}? This will create a new version with the old content.`)) return;
+
+    const page = wikiPages.find(p => p.id === pageId);
+    if (!page) return;
+
+    if (!pagesDirHandle) {
+      showNotification('❌ No folder selected', true);
+      return;
+    }
+
+    const versions = page.versions || [];
+    const targetVersion = versions.find(v => v.version === versionNum);
+    if (!targetVersion) {
+      showNotification('❌ Version not found', true);
+      return;
+    }
+
+    const newVersion = versions.length > 0 ? versions[versions.length - 1].version + 1 : 2;
+    const newFilename = `${page.baseName}-v${newVersion}.md`;
+    const contentWithChange = `<!-- CHANGE: Rollback to v${versionNum} -->\n` + targetVersion.content;
+
+    const success = await writeFile(page.category, newFilename, contentWithChange);
+    if (success) {
+      const pointerSuccess = await writeFile(page.category, `${page.baseName}.md`, contentWithChange);
+      if (!pointerSuccess) {
+        showNotification(
+          `⚠️ Rolled back to v${newVersion} but couldn't update the "latest" pointer file - ` +
+          `re-open and save again to fix this before syncing.`, true);
+      }
+
+      const updatedPage = { ...page };
+      updatedPage.content = contentWithChange;
+      updatedPage.version = newVersion;
+      updatedPage.filename = newFilename;
+      updatedPage.versions = [...versions, {
+        id: `${page.baseName}-v${newVersion}`,
+        version: newVersion,
+        filename: newFilename,
+        content: contentWithChange,
+        changeDesc: `Rollback to v${versionNum}`,
+        timestamp: new Date().toISOString()
+      }];
+
+      await db.setItem(page.baseName, updatedPage);
+      await loadPages();
+      closeModal('historyModal');
+      showNotification(`✅ Rolled back to v${versionNum} (now v${newVersion})`, false, 'success');
+    } else {
+      showNotification('❌ Rollback failed', true);
+    }
+  }
+
+  // ============================================================
+  // MODAL HANDLING
+  // ============================================================
+
+  function openAddModal() {
+    if (!rootHandle) { showNotification('⚠️ Please select a folder first', true); return; }
+
+    isEditing = false;
+    editingPageId = null;
+    modalTitle.textContent = '+ Add a new page';
+    pageTitleInput.value = '';
+    if (categories.length > 0) {
+      pageCategory.value = categories[0];
+    }
+    changeDescription.value = '';
+    termsContainer.innerHTML = '';
+    relatedContainer.innerHTML = '';
+    addTermRow();
+    addRelatedRow();
+    savePageBtn.textContent = '💾 Create Page';
+
+    if (tinymce.get('pageContent')) {
+      tinymce.get('pageContent').setContent('');
+    } else {
+      initEditor('');
+    }
+
+    openModalA11y('pageModal');
+  }
+
+  function openEditModal(pageId) {
+    const page = wikiPages.find(p => p.id === pageId);
+    if (!page) return;
+
+    if (!rootHandle) { showNotification('⚠️ Please select a folder first', true); return; }
+
+    isEditing = true;
+    editingPageId = pageId;
+    modalTitle.textContent = `✎ Edit: ${page.title}`;
+
+    const fullContent = getLatestVersionContent(page);
+    console.log('Full content loaded for editing:', fullContent);
+
+    const data = parseMarkdown(fullContent);
+
+    pageTitleInput.value = data.title || page.title;
+    pageCategory.value = page.category;
+    changeDescription.value = data.changeDesc || '';
+
+    termsContainer.innerHTML = '';
+    if (data.terms && data.terms.length > 0) {
+      data.terms.forEach(t => addTermRow(t.term, t.definition));
+    } else {
+      addTermRow();
+    }
+
+    relatedContainer.innerHTML = '';
+    if (data.related && data.related.length > 0) {
+      data.related.forEach(r => addRelatedRow(r));
+    } else {
+      addRelatedRow();
+    }
+
+    savePageBtn.textContent = '💾 Update Page';
+
+    const contentToEdit = data.content || '';
+    console.log('Content to edit:', contentToEdit);
+
+    if (tinymce.get('pageContent')) {
+      const htmlContent = DOMPurify.sanitize(marked.parse(contentToEdit));
+      tinymce.get('pageContent').setContent(htmlContent);
+    } else {
+      initEditor(contentToEdit);
+    }
+
+    openModalA11y('pageModal');
+  }
+
+  let lastFocusedElement = null;
+
+  function openModalA11y(id) {
+    lastFocusedElement = document.activeElement;
+    const modalEl = $(id);
+    modalEl.classList.add('active');
+    const dialog = modalEl.querySelector('[role="dialog"]');
+    if (!dialog) return;
+    const focusable = dialog.querySelector('input, textarea, select, button, [href]');
+    (focusable || dialog).focus();
+  }
+
+  function closeModal(id) {
+    $(id).classList.remove('active');
+    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+      lastFocusedElement.focus();
+    }
+    lastFocusedElement = null;
+  }
+
+  // ============================================================
+  // TINYMCE EDITOR
+  // ============================================================
+
+  function initEditor(content = '') {
+    if (editorInitialized) {
+      if (tinymce.get('pageContent')) {
+        const htmlContent = content ? DOMPurify.sanitize(marked.parse(content)) : '';
+        tinymce.get('pageContent').setContent(htmlContent);
+      }
+      return;
+    }
+
+    tinymce.init({
+      selector: '#pageContent',
+      height: 320,
+      menubar: false,
+      toolbar: [
+        'undo redo | bold italic underline strikethrough | formatselect',
+        'bullist numlist | alignleft aligncenter alignright | outdent indent',
+        'link image | table | blockquote code | removeformat help'
+      ],
+      toolbar_sticky: false,
+      resize: true,
+      min_height: 250,
+      cleanup: true,
+      cleanup_on_startup: true,
+      valid_elements: 'p,br,strong/b,em/i,u,s/strike,h1,h2,h3,h4,' +
+        'ul,ol,li,' +
+        'a[href|target|rel|title],' +
+        'img[src|alt|width|height],' +
+        'table[border|cellpadding|cellspacing|style],thead,tbody,tr,' +
+        'td[colspan|rowspan|style],th[colspan|rowspan|style],' +
+        'blockquote,pre,code,span[style],div[style]',
+      plugins: [
+        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+        'insertdatetime', 'media', 'table', 'help', 'wordcount'
+      ],
+      table_default_attributes: {
+        border: '1',
+        cellpadding: '8',
+        cellspacing: '0',
+        style: 'border-collapse: collapse; width: 100%;'
+      },
+      table_default_styles: {
+        borderCollapse: 'collapse',
+        width: '100%'
+      },
+      content_style: `
+        body { font-family: 'Inter', system-ui, sans-serif; font-size: 16px; line-height: 1.6; color: #0b1a2a; max-width: 100%; }
+        h1 { font-size: 1.8rem; margin: 0 0 0.5rem; }
+        h2 { font-size: 1.4rem; margin: 1.5rem 0 0.4rem; color: #0a1e2f; }
+        h3 { font-size: 1.15rem; margin: 1.2rem 0 0.3rem; color: #1a3347; }
+        h4 { font-size: 1rem; margin: 1rem 0 0.2rem; color: #1a3347; }
+        p { margin-bottom: 0.8rem; }
+        ul, ol { margin-left: 1.5rem; margin-bottom: 0.8rem; }
+        li { margin-bottom: 0.2rem; }
+        table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
+        th, td { border: 1px solid #d6e2ed; padding: 0.5rem 1rem; text-align: left; }
+        th { background: #e6eff7; font-weight: 600; }
+        blockquote { border-left: 4px solid #2b7a8a; padding: 0.5rem 1rem; margin: 0.5rem 0; background: #f0f5fa; border-radius: 0 8px 8px 0; }
+        code { background: #eef2f7; padding: 0.1rem 0.4rem; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+        pre { background: #1a3347; color: #e6edf5; padding: 1rem; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 0.9rem; margin: 0.5rem 0; }
+        pre code { background: none; padding: 0; color: inherit; }
+        img { max-width: 100%; border-radius: 8px; margin: 0.5rem 0; }
+        a { color: #2b7a8a; text-decoration: underline; }
+        a:hover { color: #3a8fa0; }
+      `,
+      setup: function(editor) {
+        editor.on('init', function() {
+          const htmlContent = content ? DOMPurify.sanitize(marked.parse(content)) : '';
+          editor.setContent(htmlContent);
+          editorInitialized = true;
+        });
+
+        editor.on('paste', function(e) {
+          const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+              const blob = items[i].getAsFile();
+              const reader = new FileReader();
+              reader.onload = function(event) {
+                editor.insertContent(
+                  `<img src="${event.target.result}" alt="Pasted image" style="max-width:100%;border-radius:8px;"/>`);
+              };
+              reader.readAsDataURL(blob);
+            }
+          }
+        });
+      }
+    });
+  }
+
+  // ============================================================
+  // GET EDITOR CONTENT - Convert HTML back to Markdown
+  // ============================================================
+
+  function getEditorContent() {
+    if (tinymce.get('pageContent')) {
+      const html = tinymce.get('pageContent').getContent();
+      return htmlToMarkdown(html);
+    }
+    return '';
+  }
+
+  function htmlToMarkdown(html) {
+    if (!html) return '';
+
+    let md = html;
+
+    md = md.replace(/<br\s*\/?>/gi, '\n');
+    md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n');
+    md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n');
+    md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n');
+    md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n');
+
+    md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+    md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+    md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+    md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+    md = md.replace(/<u[^>]*>(.*?)<\/u>/gi, '__$1__');
+    md = md.replace(/<strike[^>]*>(.*?)<\/strike>/gi, '~~$1~~');
+
+    md = md.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+    md = md.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)');
+    md = md.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)');
+
+    let lines = md.split('\n');
+    let processedLines = [];
+    let currentIndent = 0;
+    let inListBlock = false;
+    let listTypeStack = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i];
+      let trimmed = line.trim();
+
+      if (trimmed.match(/^<ul[^>]*>$/)) {
+        currentIndent++;
+        inListBlock = true;
+        listTypeStack.push('ul');
+        continue;
+      } else if (trimmed.match(/^<ol[^>]*>$/)) {
+        currentIndent++;
+        inListBlock = true;
+        listTypeStack.push('ol');
+        continue;
+      } else if (trimmed === '</ul>' || trimmed === '</ol>') {
+        currentIndent--;
+        listTypeStack.pop();
+        if (currentIndent === 0) {
+          inListBlock = false;
+        }
+        continue;
+      }
+
+      if (trimmed.match(/^<li[^>]*>/)) {
+        let content = trimmed.replace(/^<li[^>]*>/, '').replace(/<\/li>/, '');
+        content = content.replace(/<[^>]*>/g, '').trim();
+        const indent = '  '.repeat(Math.max(0, currentIndent - 1));
+        const currentListType = listTypeStack[listTypeStack.length - 1];
+        const prefix = currentListType === 'ol' ? '1. ' : '- ';
+        processedLines.push(`${indent}${prefix}${content}`);
+        continue;
+      }
+
+      if (!inListBlock) {
+        processedLines.push(line);
+      }
+    }
+
+    md = processedLines.join('\n');
+
+    md = md.replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, function(match, content) {
+      let lines = content.replace(/<br\s*\/?>/gi, '\n').split('\n');
+      lines = lines.filter(l => l.trim());
+      lines = lines.map(line => line.replace(/<p[^>]*>/gi, '').replace(/<\/p>/gi, ''));
+      return lines.map(line => `> ${line.trim()}`).join('\n') + '\n';
+    });
+
+    md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, function(match, content) {
+      let clean = content.replace(/<br\s*\/?>/gi, '\n');
+      clean = clean.replace(/<[^>]*>/g, '');
+      return clean + '\n';
+    });
+
+    md = md.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, function(match, content) {
+      return '```\n' + content.trim() + '\n```\n';
+    });
+    md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+
+    md = md.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, function(match, content) {
+      const rows = content.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
+      if (!rows) return '';
+
+      let tableMd = '';
+      let headerRow = true;
+
+      rows.forEach(row => {
+        const cells = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi);
+        if (!cells) return;
+
+        const cellContents = cells.map(cell => {
+          let content = cell.replace(/<t[dh][^>]*>/, '').replace(/<\/t[dh]>/, '');
+          content = content.replace(/<[^>]*>/g, '').trim();
+          return content || ' ';
+        });
+
+        tableMd += '| ' + cellContents.join(' | ') + ' |\n';
+
+        if (headerRow) {
+          tableMd += '| ' + cellContents.map(() => '---').join(' | ') + ' |\n';
+          headerRow = false;
+        }
+      });
+
+      return tableMd + '\n';
+    });
+
+    md = md.replace(/\n{4,}/g, '\n\n');
+    md = md.replace(/<[^>]*>/g, '');
+    md = md.trim();
+
+    return md;
+  }
+
+  // Escapes all five HTML-significant characters
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ============================================================
+  // FORM SUBMISSION
+  // ============================================================
+
+  let isSaving = false;
+
+  async function handleSavePage() {
+    if (isSaving) return;
+
+    const title = pageTitleInput.value.trim();
+    if (!title) { showNotification('⚠️ Please enter a page title', true); return; }
+
+    const category = pageCategory.value;
+    if (!category) { showNotification('⚠️ Please select a category', true); return; }
+
+    isSaving = true;
+    const originalLabel = savePageBtn.textContent;
+    savePageBtn.disabled = true;
+    savePageBtn.textContent = '💾 Saving…';
+
+    try {
+      const content = getEditorContent();
+      const changeDesc = changeDescription.value.trim();
+
+      const termRows = termsContainer.querySelectorAll('.term-row');
+      const terms = [];
+      termRows.forEach(row => {
+        const term = row.querySelector('.term-term').value.trim();
+        const def = row.querySelector('.term-definition').value.trim();
+        if (term || def) terms.push({ term, definition: def });
+      });
+
+      const relatedRows = relatedContainer.querySelectorAll('.term-row');
+      const related = [];
+      relatedRows.forEach(row => {
+        const val = row.querySelector('.related-page').value.trim();
+        if (val) related.push(val);
+      });
+
+      const fullContent = buildMarkdown(title, content, terms, related, changeDesc);
+
+      if (isEditing && editingPageId) {
+        const success = await updatePage(editingPageId, fullContent, changeDesc);
+        if (success) {
+          closeModal('pageModal');
+        }
+      } else {
+        const success = await saveNewPage(title, category, fullContent, changeDesc);
+        if (success) {
+          closeModal('pageModal');
+        }
+      }
+    } finally {
+      isSaving = false;
+      savePageBtn.disabled = false;
+      savePageBtn.textContent = originalLabel;
+    }
+  }
+
+  // ============================================================
+  // NOTIFICATIONS
+  // ============================================================
+
+  function showNotification(msg, isError = false, type = '') {
+    const notif = $('notification');
+    notif.textContent = msg;
+    notif.className = 'notification';
+    if (isError) notif.classList.add('error');
+    if (type === 'success') notif.classList.add('success');
+    notif.classList.add('show');
+    setTimeout(() => notif.classList.remove('show'), 4000);
+  }
+
+  // ============================================================
+  // VALIDATION
+  // ============================================================
+
+  function runValidation() {
+    const modal = $('validationModal');
+    const results = $('validationResults');
+    let html = '<h3>✅ Validation Report</h3><ul>';
+    if (wikiPages.length === 0) {
+      html += '<li>No pages to validate. Add some pages first!</li>';
+    } else {
+      wikiPages.forEach(p => {
+        const hasTable = p.content.includes('|');
+        const hasRelated = p.content.toLowerCase().includes('related pages');
+        const status = (hasTable && hasRelated) ? '✅' : '⚠️';
+        const versionCount = (p.versions || []).length;
+        html +=
+          `<li>${status} <strong>${escapeHtml(p.title)}</strong> (v${p.version}, ${versionCount} version${versionCount > 1 ? 's' : ''}) — Key Terms: ${hasTable ? '✅' : '❌'}, Related Pages: ${hasRelated ? '✅' : '❌'}</li>`;
+      });
+    }
+    html += '</ul><p style="margin-top:1rem;color:#1f3f55;">📁 Total pages: ' + wikiPages.length + '</p>';
+    if (rootHandle) {
+      html += `<p style="color:#4b6f85;">📂 Folder: ${escapeHtml(rootHandle.name)}</p>`;
+      html += `<p style="color:#4b6f85;">📂 Categories found: ${categories.length}</p>`;
+    }
+    results.innerHTML = html;
+    openModalA11y('validationModal');
+  }
+
+  // ============================================================
+  // EVENT HANDLERS
+  // ============================================================
+
+  document.addEventListener('DOMContentLoaded', function() {
+    if (!('showDirectoryPicker' in window)) {
+      showNotification('⚠️ Your browser doesn\'t support the File System Access API. Please use Chrome, Edge, or Opera.',
+        true);
+      $('folderBtn').disabled = true;
+
+      const banner = document.createElement('div');
+      banner.setAttribute('role', 'alert');
+      banner.style.cssText =
+        'background:#fff3cd;color:#664d03;padding:0.75rem 1rem;text-align:center;' +
+        'font-size:0.9rem;border-bottom:1px solid #ffe69c;';
+      banner.innerHTML = '⚠️ This browser doesn\'t support the File System Access API required by USB Wiki. ' +
+        'Please switch to Chrome, Edge, or Opera to use this app.';
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+
+    initDB().then(success => {
+      if (success) {
+        showWelcome();
+      }
+    });
+
+    $('homeBtn').addEventListener('click', function() {
+      showWelcome();
+      $('sidebar').classList.remove('open');
+      $('sidebarScrim').classList.remove('active');
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    });
+
+    $('brandHome').addEventListener('click', function() {
+      showWelcome();
+      $('sidebar').classList.remove('open');
+      $('sidebarScrim').classList.remove('active');
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    });
+
+    $('folderBtn').addEventListener('click', selectFolder);
+    $('folderStatus').addEventListener('click', selectFolder);
+
+    $('resyncBtn').addEventListener('click', async function() {
+      if (!pagesDirHandle) {
+        showNotification('⚠️ Please select a folder first', true);
+        return;
+      }
+      if (isSyncing) {
+        showNotification('⏳ Sync already in progress...', false);
+        return;
+      }
+      showNotification('🔄 Starting manual resync...', false);
+      const count = await syncFromFileSystem(true);
+      if (count > 0) {
+        showNotification(`✅ Resync complete: ${count} changes detected`, false, 'success');
+      } else {
+        showNotification('✅ No changes detected', false, 'success');
+      }
+    });
+
+    // NEW: Reset Database button handler
+    $('resetBtn').addEventListener('click', resetDatabase);
+
+    const searchInput = $('searchInput');
+    const clearBtn = $('clearSearch');
+    let searchDebounceTimer = null;
+    searchInput.addEventListener('input', function() {
+      clearBtn.style.display = this.value ? 'block' : 'none';
+      clearTimeout(searchDebounceTimer);
+      const value = this.value;
+      searchDebounceTimer = setTimeout(() => filterNav(value), 150);
+    });
+    clearBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      clearTimeout(searchDebounceTimer);
+      filterNav('');
+      this.style.display = 'none';
+      searchInput.focus();
+    });
+
+    $('menuBtn').addEventListener('click', function() {
+      $('sidebar').classList.add('open');
+      $('sidebarScrim').classList.add('active');
+    });
+    $('closeSidebar').addEventListener('click', function() {
+      $('sidebar').classList.remove('open');
+      $('sidebarScrim').classList.remove('active');
+    });
+    $('sidebarScrim').addEventListener('click', function() {
+      $('sidebar').classList.remove('open');
+      this.classList.remove('active');
+    });
+
+    document.querySelectorAll('[data-close]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        closeModal(this.dataset.close);
+      });
+    });
+
+    $('addPageBtn').addEventListener('click', openAddModal);
+
+    $('editBtn').addEventListener('click', function() {
+      const area = $('contentArea');
+      const currentId = area.dataset.currentId;
+      if (currentId) openEditModal(currentId);
+    });
+
+    $('historyBtn').addEventListener('click', function() {
+      const area = $('contentArea');
+      const currentId = area.dataset.currentId;
+      if (currentId) openHistory(currentId);
+    });
+
+    savePageBtn.addEventListener('click', handleSavePage);
+
+    document.querySelectorAll('#pageModal input:not(textarea), #pageModal select').forEach(el => {
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && this.id !== 'changeDescription') {
+          e.preventDefault();
+          handleSavePage();
+        }
+      });
+    });
+
+    $('validateBtn').addEventListener('click', runValidation);
+
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        $('searchInput').focus();
+      }
+      if (e.key === 'Escape') {
+        if (modal.classList.contains('active')) closeModal('pageModal');
+        if (historyModal.classList.contains('active')) closeModal('historyModal');
+        if ($('validationModal').classList.contains('active')) closeModal('validationModal');
+      }
+    });
+  });
+
+  // Re-expose functions needed by inline onclick handlers
+  window.addRelatedRow = addRelatedRow;
+  window.addTermRow = addTermRow;
+  window.closeModal = closeModal;
+  window.removeRelatedRow = removeRelatedRow;
+  window.removeTermRow = removeTermRow;
+  window.rollbackVersion = rollbackVersion;
+})();
+</script>
+</body>
+</html>
