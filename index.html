@@ -390,7 +390,7 @@
     </div>
     <div class="search-box">
       <span class="search-icon">⌕</span>
-      <input type="text" id="searchInput" placeholder="Search pages…  (Ctrl+K)" aria-label="Search pages" autocomplete="off">
+      <input type="text" id="searchInput" placeholder="Search titles &amp; content…  (Ctrl+K)" aria-label="Search page titles and content" autocomplete="off">
       <button class="clear-search" id="clearSearch">✕</button>
     </div>
     <nav class="nav-tree" id="navTree"></nav>
@@ -1818,12 +1818,24 @@
   function filterNav(query) {
     const q = query.toLowerCase().trim();
 
+    // Full-text: match against page content as well as the title. Content
+    // lives in the in-memory wikiPages array, which loadPages() rebuilds
+    // from IndexedDB after every save/sync, so edits are searchable
+    // immediately.
+    const contentById = new Map();
+    if (q !== '') {
+      wikiPages.forEach(p => {
+        contentById.set(p.id, ((p.title || '') + '\n' + (p.content || '')).toLowerCase());
+      });
+    }
+
     document.querySelectorAll('#navTree .nav-cat').forEach(catEl => {
       const items = catEl.querySelectorAll('.nav-item');
       let matches = 0;
       items.forEach(el => {
         const titleEl = el.querySelector('.nav-item-title');
-        const haystack = (titleEl ? titleEl.textContent : el.textContent).toLowerCase();
+        const haystack = contentById.get(el.dataset.id) ||
+          (titleEl ? titleEl.textContent : el.textContent).toLowerCase();
         const hit = q === '' || haystack.includes(q);
         el.style.display = hit ? 'block' : 'none';
         if (hit) matches++;
