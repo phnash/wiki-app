@@ -961,15 +961,25 @@
           let page = await db.getItem(baseTitle);
 
           if (!page) {
-            // New page - create it with version 1
-            console.log(`📄 New page detected: ${baseTitle}`);
+            // New page - discovered fresh from disk (e.g. after Reset DB,
+            // or the first sync of a folder that already has history).
+            // The pointer always mirrors the highest-numbered -vN.md file
+            // per the app's own save/update paths, so the version number
+            // to show is the highest one found on disk, not a hardcoded 1
+            // - otherwise every freshly-discovered page with prior history
+            // gets stuck showing no version badge at all.
+            const maxHistVersion = entry.historical.length > 0
+              ? Math.max(...entry.historical.map(h => h.version))
+              : 0;
+            const currentVersion = Math.max(1, maxHistVersion);
+            console.log(`📄 New page detected: ${baseTitle} (starting at v${currentVersion})`);
             page = {
               id: baseTitle,
               title: title,
               category: currentFile.category,
               content: content,
               versions: [],
-              version: 1,
+              version: currentVersion,
               filename: currentFile.name,
               baseName: baseTitle,
               lastModified: currentFile.modTime,
@@ -977,11 +987,11 @@
             };
 
             const versionObj = {
-              id: `${baseTitle}-v1`,
-              version: 1,
+              id: `${baseTitle}-v${currentVersion}`,
+              version: currentVersion,
               filename: currentFile.name,
               content: content,
-              changeDesc: changeDesc || 'Initial creation',
+              changeDesc: changeDesc || (currentVersion === 1 ? 'Initial creation' : `Version ${currentVersion}`),
               timestamp: new Date().toISOString()
             };
             page.versions.push(versionObj);
@@ -1077,6 +1087,20 @@
                 if (CONFIG.maxVersions > 0 && refreshedPage.versions.length > CONFIG.maxVersions) {
                   refreshedPage.versions = refreshedPage.versions.slice(-CONFIG.maxVersions);
                 }
+              }
+              // Self-heal: page.version is what drives the version badge in
+              // the UI. Older cached records (from before this fix, or from
+              // the earlier per-file phantom-bump bug) can have it stuck
+              // below the highest version number that's actually on record
+              // - correct it here rather than requiring a manual Reset DB.
+              const maxKnownVersion = refreshedPage.versions.length > 0
+                ? Math.max(...refreshedPage.versions.map(v => v.version))
+                : refreshedPage.version;
+              if (maxKnownVersion !== refreshedPage.version) {
+                refreshedPage.version = maxKnownVersion;
+                historyChanged = true;
+              }
+              if (historyChanged) {
                 await db.setItem(baseTitle, refreshedPage);
               }
             }
