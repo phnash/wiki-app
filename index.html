@@ -911,18 +911,18 @@
 
           existingFileKeys.add(baseTitle);
 
+          // Extract a display-only change description from the leading
+          // comment. This must NOT alter `content` - hashing/comparing/
+          // storing has to match the exact raw bytes saveNewPage/updatePage
+          // write to disk, or every resync looks like a "change" even when
+          // nothing was edited.
           let changeDesc = '';
-          let cleanContent = content;
           if (content.startsWith('<!-- CHANGE: ')) {
             const endIdx = content.indexOf(' -->');
             if (endIdx > 0) {
               changeDesc = content.substring(13, endIdx);
-              cleanContent = content.substring(endIdx + 4);
             }
           }
-
-          // Normalize content - remove trailing whitespace that could cause false positives
-          cleanContent = cleanContent.replace(/\s+$/g, '');
 
           let page = await db.getItem(baseTitle);
 
@@ -933,20 +933,20 @@
               id: baseTitle,
               title: title,
               category: file.category,
-              content: cleanContent,
+              content: content,
               versions: [],
               version: 1,
               filename: file.name,
               baseName: baseTitle,
               lastModified: file.modTime,
-              contentHash: await hashContent(cleanContent)
+              contentHash: await hashContent(content)
             };
 
             const versionObj = {
               id: `${baseTitle}-v1`,
               version: 1,
               filename: file.name,
-              content: cleanContent,
+              content: content,
               changeDesc: changeDesc || 'Initial creation',
               timestamp: new Date().toISOString()
             };
@@ -962,22 +962,22 @@
             }
           } else {
             // Existing page - check if content has ACTUALLY changed
-            const currentHash = await hashContent(cleanContent);
+            const currentHash = await hashContent(content);
             const storedHash = page.contentHash || '';
 
             // Compare content directly as well (double-check)
             const storedContent = page.content || '';
-            const contentChanged = (currentHash !== storedHash) || (cleanContent !== storedContent);
+            const contentChanged = (currentHash !== storedHash) || (content !== storedContent);
 
             if (contentChanged) {
               console.log(`📄 Content changed: ${baseTitle}`);
-              
+
               // Determine next version number
               const versions = page.versions || [];
               const nextVersion = versions.length > 0 ? versions[versions.length - 1].version + 1 : 1;
-              
+
               // Update the page
-              page.content = cleanContent;
+              page.content = content;
               page.category = file.category;
               page.filename = file.name;
               page.lastModified = file.modTime;
@@ -989,7 +989,7 @@
                 id: `${baseTitle}-v${nextVersion}`,
                 version: nextVersion,
                 filename: file.name,
-                content: cleanContent,
+                content: content,
                 changeDesc: changeDesc || `Version ${nextVersion}`,
                 timestamp: new Date().toISOString()
               };
@@ -1226,10 +1226,9 @@
       filename = `${baseName}-v${version}.md`;
     }
 
-    let fullContent = content;
-    if (changeDesc) {
-      fullContent = `<!-- CHANGE: ${changeDesc} -->\n` + content;
-    }
+    // `content` is buildMarkdown()'s output, which already prepends the
+    // <!-- CHANGE: --> comment when changeDesc is set - don't add it twice.
+    const fullContent = content;
 
     const fileSuccess = await writeFile(category, filename, fullContent);
     if (!fileSuccess) {
@@ -1300,10 +1299,9 @@
     const newVersion = versions.length > 0 ? versions[versions.length - 1].version + 1 : 2;
     const newFilename = `${baseName}-v${newVersion}.md`;
 
-    let fullContent = newContent;
-    if (changeDesc) {
-      fullContent = `<!-- CHANGE: ${changeDesc} -->\n` + newContent;
-    }
+    // `newContent` is buildMarkdown()'s output, which already prepends the
+    // <!-- CHANGE: --> comment when changeDesc is set - don't add it twice.
+    const fullContent = newContent;
 
     const fileSuccess = await writeFile(page.category, newFilename, fullContent);
     if (!fileSuccess) {
