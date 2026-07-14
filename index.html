@@ -897,19 +897,53 @@
 
       const existingFileKeys = new Set();
 
+      // Group every .md file by its logical page (baseTitle) BEFORE doing
+      // any change detection. A page with prior edit history has multiple
+      // files on disk for the same page - the pointer (slug.md, always
+      // mirrors the latest version) plus every historical slug-vN.md - by
+      // design (see CLAUDE.md's data model). Comparing each of those files
+      // independently against the single cached page.content, as this loop
+      // used to, bumped the version once per leftover history file on every
+      // resync (their content legitimately differs from the current cache
+      // by definition) without ever writing a file - exactly the "version
+      // jumped by N on one resync click" bug. Only the pointer file may
+      // ever represent "the current content changed."
+      const pages = new Map();
       for (const file of files) {
+        const baseName = file.name.replace(/\.md$/, '');
+        const versionMatch = baseName.match(/-v(\d+)$/);
+        const isVersioned = versionMatch !== null;
+        const baseTitle = isVersioned ? baseName.replace(/-v\d+$/, '') : baseName;
+
+        if (!pages.has(baseTitle)) {
+          pages.set(baseTitle, { pointer: null, historical: [] });
+        }
+        const entry = pages.get(baseTitle);
+        if (isVersioned) {
+          entry.historical.push({ file, version: parseInt(versionMatch[1], 10) });
+        } else {
+          entry.pointer = file;
+        }
+      }
+
+      for (const [baseTitle, entry] of pages) {
         try {
-          const content = await readFile(file.category, file.name);
+          existingFileKeys.add(baseTitle);
+
+          // The pointer file drives "did the current content change".
+          // Fall back to the newest historical file only if a page
+          // somehow has no pointer file at all.
+          let currentFile = entry.pointer;
+          if (!currentFile && entry.historical.length > 0) {
+            entry.historical.sort((a, b) => b.version - a.version);
+            currentFile = entry.historical[0].file;
+          }
+          if (!currentFile) continue;
+
+          const content = await readFile(currentFile.category, currentFile.name);
           if (content === null) continue;
 
-          const baseName = file.name.replace(/\.md$/, '');
-          const versionMatch = baseName.match(/-v(\d+)$/);
-          const isVersioned = versionMatch !== null;
-          const baseTitle = isVersioned ? baseName.replace(/-v\d+$/, '') : baseName;
           const title = baseTitle.replace(/-/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
-          const fileVersion = isVersioned ? parseInt(versionMatch[1], 10) : 1;
-
-          existingFileKeys.add(baseTitle);
 
           // Extract a display-only change description from the leading
           // comment. This must NOT alter `content` - hashing/comparing/
@@ -932,20 +966,20 @@
             page = {
               id: baseTitle,
               title: title,
-              category: file.category,
+              category: currentFile.category,
               content: content,
               versions: [],
               version: 1,
-              filename: file.name,
+              filename: currentFile.name,
               baseName: baseTitle,
-              lastModified: file.modTime,
+              lastModified: currentFile.modTime,
               contentHash: await hashContent(content)
             };
 
             const versionObj = {
               id: `${baseTitle}-v1`,
               version: 1,
-              filename: file.name,
+              filename: currentFile.name,
               content: content,
               changeDesc: changeDesc || 'Initial creation',
               timestamp: new Date().toISOString()
@@ -955,8 +989,8 @@
             await db.setItem(baseTitle, page);
             syncedCount++;
 
-            if (!categories.includes(file.category)) {
-              categories.push(file.category);
+            if (!categories.includes(currentFile.category)) {
+              categories.push(currentFile.category);
               categories.sort();
               updateCategoryDropdown();
             }
@@ -978,9 +1012,9 @@
 
               // Update the page
               page.content = content;
-              page.category = file.category;
-              page.filename = file.name;
-              page.lastModified = file.modTime;
+              page.category = currentFile.category;
+              page.filename = currentFile.name;
+              page.lastModified = currentFile.modTime;
               page.contentHash = currentHash;
               page.version = nextVersion;
 
@@ -988,7 +1022,7 @@
               const versionObj = {
                 id: `${baseTitle}-v${nextVersion}`,
                 version: nextVersion,
-                filename: file.name,
+                filename: currentFile.name,
                 content: content,
                 changeDesc: changeDesc || `Version ${nextVersion}`,
                 timestamp: new Date().toISOString()
@@ -1001,14 +1035,54 @@
 
               await db.setItem(baseTitle, page);
               syncedCount++;
-            } else if (file.modTime && page.lastModified !== file.modTime) {
+            } else if (currentFile.modTime && page.lastModified !== currentFile.modTime) {
               // Just update metadata if content hasn't changed
-              page.lastModified = file.modTime;
+              page.lastModified = currentFile.modTime;
               await db.setItem(baseTitle, page);
             }
           }
+
+          // Reconcile historical -vN.md files IndexedDB doesn't already
+          // have a version entry for (e.g. one was restored/added directly
+          // on disk). This only ever appends to page.versions - it never
+          // touches page.content/page.version, so unlike the old per-file
+          // loop it cannot manufacture a phantom "current version" bump.
+          if (entry.historical.length > 0) {
+            const refreshedPage = await db.getItem(baseTitle);
+            if (refreshedPage) {
+              const knownVersions = new Set((refreshedPage.versions || []).map(v => v.version));
+              let historyChanged = false;
+              for (const { file: histFile, version: histVersion } of entry.historical) {
+                if (knownVersions.has(histVersion)) continue;
+                const histContent = await readFile(histFile.category, histFile.name);
+                if (histContent === null) continue;
+                let histChangeDesc = '';
+                if (histContent.startsWith('<!-- CHANGE: ')) {
+                  const endIdx = histContent.indexOf(' -->');
+                  if (endIdx > 0) histChangeDesc = histContent.substring(13, endIdx);
+                }
+                refreshedPage.versions.push({
+                  id: `${baseTitle}-v${histVersion}`,
+                  version: histVersion,
+                  filename: histFile.name,
+                  content: histContent,
+                  changeDesc: histChangeDesc || `Version ${histVersion}`,
+                  timestamp: new Date().toISOString()
+                });
+                knownVersions.add(histVersion);
+                historyChanged = true;
+              }
+              if (historyChanged) {
+                refreshedPage.versions.sort((a, b) => a.version - b.version);
+                if (CONFIG.maxVersions > 0 && refreshedPage.versions.length > CONFIG.maxVersions) {
+                  refreshedPage.versions = refreshedPage.versions.slice(-CONFIG.maxVersions);
+                }
+                await db.setItem(baseTitle, refreshedPage);
+              }
+            }
+          }
         } catch (e) {
-          console.error('Failed to process ' + file.name + ':', e);
+          console.error('Failed to process ' + baseTitle + ':', e);
         }
       }
 
