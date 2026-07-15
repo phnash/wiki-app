@@ -2546,6 +2546,22 @@
     return '';
   }
 
+  // Wrap text in Markdown emphasis markers, hoisting leading/trailing
+  // whitespace OUTSIDE the markers. CommonMark's flanking rules make
+  // delimiters that touch inner whitespace literal - '**on the vessel **'
+  // renders as plain asterisks, not bold - and TinyMCE routinely captures
+  // the user's trailing space inside <strong>/<em> (double-click word
+  // selection includes it). This is the single place emphasis delimiters
+  // are emitted, for both the list DOM walker and the regex pipeline.
+  // Whitespace-only content gets no markers at all ('** **' would be
+  // literal too).
+  function wrapEmphasis(open, close, inner) {
+    const m = inner.match(/^(\s*)([\s\S]*?)(\s*)$/);
+    const lead = m[1], core = m[2], trail = m[3];
+    if (!core) return lead + trail;
+    return lead + open + core + close + trail;
+  }
+
   // Convert one inline element (and its descendants) inside a list item to
   // Markdown. Underline uses the same %%UOPEN%% shielding as the main
   // pipeline so it survives the final strip-all-tags pass.
@@ -2557,11 +2573,11 @@
       inner += inlineNodeToMd(child);
     }
     switch (el.tagName.toLowerCase()) {
-      case 'strong': case 'b': return inner ? `**${inner}**` : '';
-      case 'em': case 'i': return inner ? `*${inner}*` : '';
-      case 'u': return inner ? `%%UOPEN%%${inner}%%UCLOSE%%` : '';
-      case 's': case 'strike': return inner ? `~~${inner}~~` : '';
-      case 'code': return inner ? '`' + inner + '`' : '';
+      case 'strong': case 'b': return wrapEmphasis('**', '**', inner);
+      case 'em': case 'i': return wrapEmphasis('*', '*', inner);
+      case 'u': return wrapEmphasis('%%UOPEN%%', '%%UCLOSE%%', inner);
+      case 's': case 'strike': return wrapEmphasis('~~', '~~', inner);
+      case 'code': return inner.trim() ? '`' + inner.trim() + '`' : inner;
       case 'a': return `[${inner}](${el.getAttribute('href') || ''})`;
       case 'img': return `![${el.getAttribute('alt') || ''}](${el.getAttribute('src') || ''})`;
       case 'br': return ' ';
@@ -2638,19 +2654,26 @@
     md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n');
     md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n');
 
-    md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
-    md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
-    md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
-    md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+    // Inline emphasis. All of these go through wrapEmphasis so that
+    // whitespace TinyMCE captured inside the tag lands OUTSIDE the Markdown
+    // markers (see wrapEmphasis - '**text **' is literal asterisks in
+    // CommonMark). [\s\S] instead of . so a tag spanning a line break still
+    // converts rather than silently losing its formatting to the final
+    // tag-strip pass.
+    const emph = (open, close) => (match, inner) => wrapEmphasis(open, close, inner);
+    md = md.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, emph('**', '**'));
+    md = md.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, emph('**', '**'));
+    md = md.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, emph('*', '*'));
+    md = md.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, emph('*', '*'));
     // Markdown has no underline syntax and __text__ renders as BOLD in
     // CommonMark, so mapping <u> to __..__ silently turned underline into
     // bold on every edit round-trip. Keep <u> as inline HTML instead
     // (marked renders it, DOMPurify allows it) - shield it from the final
     // strip-all-tags pass with non-angle-bracket placeholders.
-    md = md.replace(/<u[^>]*>(.*?)<\/u>/gi, '%%UOPEN%%$1%%UCLOSE%%');
+    md = md.replace(/<u[^>]*>([\s\S]*?)<\/u>/gi, emph('%%UOPEN%%', '%%UCLOSE%%'));
     // TinyMCE 6 emits <s> for strikethrough (valid_elements normalizes
     // strike -> s), so match both forms
-    md = md.replace(/<(?:s|strike)[^>]*>(.*?)<\/(?:s|strike)>/gi, '~~$1~~');
+    md = md.replace(/<(?:s|strike)[^>]*>([\s\S]*?)<\/(?:s|strike)>/gi, emph('~~', '~~'));
 
     md = md.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
     md = md.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)');
