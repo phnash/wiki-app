@@ -1063,6 +1063,8 @@
       let syncedCount = 0;
       let deletedCount = 0;
       let resetCount = 0;
+      let movedCount = 0;
+      const duplicateWarnings = [];
 
       const existingFileKeys = new Set();
 
@@ -1090,6 +1092,17 @@
         const entry = pages.get(baseTitle);
         if (isVersioned) {
           entry.historical.push({ file, version: parseInt(versionMatch[1], 10) });
+        } else if (entry.pointer) {
+          // The same slug exists as a pointer file in two category folders
+          // (a copy rather than a move during hand-reorganisation). Keep
+          // the most recently modified copy deterministically, and surface
+          // it - silently picking one would hide a real organisation
+          // problem on the drive.
+          const keep = (file.modTime || 0) >= (entry.pointer.modTime || 0) ? file : entry.pointer;
+          const drop = keep === file ? entry.pointer : file;
+          console.warn(`⚠️ Duplicate page "${baseTitle}" in ${drop.category}/ and ${keep.category}/ - using ${keep.category}/${keep.name} (newer)`);
+          duplicateWarnings.push(`${baseTitle} (${drop.category} + ${keep.category})`);
+          entry.pointer = keep;
         } else {
           entry.pointer = file;
         }
@@ -1214,10 +1227,31 @@
 
               await db.setItem(baseTitle, page);
               syncedCount++;
-            } else if (currentFile.modTime && page.lastModified !== currentFile.modTime) {
-              // Just update metadata if content hasn't changed
-              page.lastModified = currentFile.modTime;
-              await db.setItem(baseTitle, page);
+            } else {
+              // Content identical - but the file may have MOVED to a
+              // different category folder (hand-reorganised on the USB
+              // while the wiki was closed). The category only lives on the
+              // cached record, so pick up relocations here; a move is a
+              // metadata change, not a content change, so it must NOT mint
+              // a new version.
+              let metaChanged = false;
+              if (page.category !== currentFile.category) {
+                console.log(`📁 Page moved: ${baseTitle}: ${page.category} → ${currentFile.category}`);
+                page.category = currentFile.category;
+                movedCount++;
+                metaChanged = true;
+              }
+              if (page.filename !== currentFile.name) {
+                page.filename = currentFile.name;
+                metaChanged = true;
+              }
+              if (currentFile.modTime && page.lastModified !== currentFile.modTime) {
+                page.lastModified = currentFile.modTime;
+                metaChanged = true;
+              }
+              if (metaChanged) {
+                await db.setItem(baseTitle, page);
+              }
             }
           }
 
@@ -1318,15 +1352,19 @@
       if (syncedCount > 0) changes.push(`${syncedCount} updated`);
       if (deletedCount > 0) changes.push(`${deletedCount} removed`);
       if (resetCount > 0) changes.push(`${resetCount} repaired`);
+      if (movedCount > 0) changes.push(`${movedCount} moved`);
       if (changes.length > 0) {
         msg += `: ${changes.join(', ')}`;
       } else {
         msg += ' — no changes detected';
       }
-      showNotification(msg, false, 'success');
-      console.log(`✅ Sync complete: ${syncedCount} updated, ${deletedCount} deleted, ${resetCount} repaired`);
+      if (duplicateWarnings.length > 0) {
+        msg += ` ⚠️ duplicate page${duplicateWarnings.length > 1 ? 's' : ''}: ${duplicateWarnings.join(', ')}`;
+      }
+      showNotification(msg, duplicateWarnings.length > 0, duplicateWarnings.length > 0 ? '' : 'success');
+      console.log(`✅ Sync complete: ${syncedCount} updated, ${deletedCount} deleted, ${resetCount} repaired, ${movedCount} moved`);
 
-      return syncedCount + deletedCount + resetCount;
+      return syncedCount + deletedCount + resetCount + movedCount;
 
     } catch (e) {
       console.error('❌ Sync error:', e);
@@ -2929,12 +2967,10 @@
         return;
       }
       showNotification('🔄 Starting manual resync...', false);
-      const count = await syncFromFileSystem(true);
-      if (count > 0) {
-        showNotification(`✅ Resync complete: ${count} changes detected`, false, 'success');
-      } else {
-        showNotification('✅ No changes detected', false, 'success');
-      }
+      // syncFromFileSystem shows its own detailed completion message
+      // (updated/removed/repaired/moved counts, duplicate warnings) -
+      // don't overwrite it with a second, less informative toast here.
+      await syncFromFileSystem(true);
     });
 
     // NEW: Reset Database button handler
