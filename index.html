@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>USB Wiki — Marine Operations</title>
+<title>USB Wiki — Radio Operators</title>
 <!-- Use marked + DOMPurify for proper Markdown rendering -->
 <!-- integrity hashes computed from the exact pinned npm package versions -->
 <script src="https://cdn.jsdelivr.net/npm/marked@11.1.0/marked.min.js"
@@ -102,6 +102,34 @@
   .nav-cat-pages::-webkit-scrollbar-track { background: var(--primary-light); border-radius: 10px; }
   .nav-cat-pages::-webkit-scrollbar-thumb { background: #3e7b93; border-radius: 10px; }
   .nav-empty { color: #4b6f85; font-size: 0.75rem; padding: 0.2rem 0.6rem; font-style: italic; }
+
+  /* ===== Welcome (home) view ===== */
+  .welcome-view { max-width: 900px; margin: 0 auto; }
+  .welcome-header { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+  .welcome-header .welcome-icon { font-size: 2rem; line-height: 1; }
+  .welcome-header h2 { font-size: 1.6rem; color: #0a1e2f; }
+  .connected-chip { background: #e8f5e9; color: #2e7d32; padding: 0.3rem 1rem; border-radius: 40px; font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
+  .welcome-sub { color: #2b7a8a; font-size: 1.05rem; margin: 0.4rem 0 1.6rem; }
+  .folder-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+  .folder-card { background: #f5f8fc; padding: 1rem; border-radius: 12px; border: 1px solid #e2eaf2; text-align: center; cursor: pointer; transition: var(--transition); }
+  .folder-card:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(43,122,138,0.12); transform: translateY(-2px); }
+  .folder-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .folder-card .folder-icon { font-size: 2rem; }
+  .folder-card .folder-name { font-weight: 600; margin: 0.3rem 0; color: #1a3347; }
+  .folder-card .folder-count { font-size: 0.85rem; color: #4b6f85; }
+  .welcome-total { margin-top: 1.5rem; font-size: 0.9rem; color: #6b8aa0; }
+
+  /* ===== Category landing view ===== */
+  .category-view-header { display: flex; align-items: baseline; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
+  .category-view-header h2 { font-size: 1.6rem; color: #0a1e2f; }
+  .category-view-count { color: #4b6f85; font-size: 0.9rem; }
+  .category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
+  .category-card { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 0.85rem 1.2rem; cursor: pointer; transition: var(--transition); font-weight: 500; color: #1a3347; }
+  .category-card:hover { border-color: var(--accent); background: #f0f7fa; }
+  .category-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .category-card .category-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .category-card .badge { background: var(--accent); color: white; font-size: 0.6rem; padding: 0.1rem 0.5rem; border-radius: 40px; flex-shrink: 0; }
+  @media (max-width: 640px) { .category-grid { grid-template-columns: 1fr; } }
   .sidebar-scrim { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 9; }
   .server-status { font-size: 0.65rem; color: #5f8ba8; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
   .server-status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -378,7 +406,7 @@
         <span class="brand-mark">§</span>
         <div>
           <h1>USB Wiki</h1>
-          <p class="brand-sub">marine operations · offline-first</p>
+          <p class="brand-sub">radio operators · offline-first</p>
         </div>
       </div>
       <button class="close-sidebar" id="closeSidebar">✕</button>
@@ -638,6 +666,9 @@
   let categories = [];
   let expandedCategories = new Set();  // session-only; all collapsed on load
   let currentPageId = null;
+  let currentCategoryView = null;      // category landing view shown in the
+                                       // main area, so loadPages() can
+                                       // restore it after a save/resync
   let isEditing = false;
   let editingPageId = null;
   let editorInitialized = false;
@@ -1411,6 +1442,10 @@
     const currentPage = currentPageId ? wikiPages.find(p => p.id === currentPageId) : null;
     if (currentPage) {
       showPage(currentPage);
+    } else if (currentCategoryView && categories.includes(currentCategoryView)) {
+      // A category landing view was open - re-render it with fresh data
+      // rather than bouncing the user back to the welcome screen
+      showCategory(currentCategoryView);
     } else {
       // No page selected (fresh load / current page deleted): show Home
       // rather than auto-opening an arbitrary first page - keeps all
@@ -1621,6 +1656,9 @@
     container.querySelectorAll('.nav-cat-header').forEach(btn => {
       btn.addEventListener('click', function() {
         toggleCategory(this.dataset.cat);
+        // Selecting a category also opens its landing view (two-column
+        // file list) in the main content area
+        showCategory(this.dataset.cat);
       });
     });
 
@@ -1676,6 +1714,7 @@
 
   function showPage(page) {
     currentPageId = page.id;
+    currentCategoryView = null;
     $('pageTitle').textContent = page.title;
     const label = page.category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     $('crumbCat').textContent = `📁 ${label}`;
@@ -1714,8 +1753,20 @@
     contentArea.scrollTop = 0;
   }
 
+  // Shared teardown for the non-page views (welcome, category landing):
+  // hide page-specific header controls and clear the nav highlight
+  function resetPageChrome() {
+    $('versionBadge').style.display = 'none';
+    $('editBtn').hidden = true;
+    $('saveBtn').hidden = true;
+    $('historyBtn').style.display = 'none';
+    $('printBtn').style.display = 'none';
+    document.querySelectorAll('#navTree .nav-item').forEach(i => i.classList.remove('active'));
+  }
+
   function showWelcome() {
     currentPageId = null;
+    currentCategoryView = null;
     $('pageTitle').textContent = 'Welcome';
     $('crumbCat').textContent = '🏠 Home';
 
@@ -1724,45 +1775,103 @@
     sortedCategories.forEach(cat => {
       const label = cat.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       const pageCount = wikiPages.filter(p => p.category === cat).length;
-      const icon = getFolderIcon(cat);
       folderCards += `
-        <div style="background:#f5f8fc;padding:1rem;border-radius:12px;border:1px solid #e2eaf2;text-align:center;">
-          <div style="font-size:2rem;">${icon}</div>
-          <div style="font-weight:600;margin:0.3rem 0;">${escapeHtml(label)}</div>
-          <div style="font-size:0.85rem;color:#4b6f85;">${pageCount} page${pageCount !== 1 ? 's' : ''}</div>
+        <div class="folder-card" data-cat="${escapeHtml(cat)}" role="button" tabindex="0"
+             aria-label="Open ${escapeHtml(label)} (${pageCount} page${pageCount !== 1 ? 's' : ''})">
+          <div class="folder-icon">${getFolderIcon(cat)}</div>
+          <div class="folder-name">${escapeHtml(label)}</div>
+          <div class="folder-count">${pageCount} page${pageCount !== 1 ? 's' : ''}</div>
         </div>
       `;
     });
 
     $('contentArea').innerHTML = `
-      <div class="empty-state" style="padding: 3rem 2rem;">
-        <div class="big-icon">🏠</div>
-        <h2 style="color: #0a1e2f;">Welcome to USB Wiki</h2>
-        <p style="font-size:1.1rem;color:#2b7a8a;margin-bottom:1.5rem;">Marine Operations Knowledge Base</p>
+      <div class="welcome-view">
+        <div class="welcome-header">
+          <span class="welcome-icon">🏠</span>
+          <h2>Welcome to USB Wiki</h2>
+          ${rootHandle ? `<span class="connected-chip">📂 ${escapeHtml(rootHandle.name)}${pagesDirHandle !== rootHandle ? ' (pages/)' : ''}</span>` : ''}
+        </div>
+        <p class="welcome-sub">Radio Operators Knowledge Base</p>
         ${rootHandle ? `
-          <div style="background:#e8f5e9;padding:0.5rem 1rem;border-radius:8px;margin-bottom:1.5rem;display:inline-block;">
-            <span style="color:#2e7d32;">📂 Connected to: <strong>${escapeHtml(rootHandle.name)}</strong>${pagesDirHandle !== rootHandle ? ' (pages/)' : ''}</span>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;max-width:700px;margin:0 auto;text-align:left;">
-            ${folderCards}
-          </div>
-          <p style="margin-top:1.5rem;font-size:0.9rem;color:#6b8aa0;">
-            📄 ${wikiPages.length} page${wikiPages.length !== 1 ? 's' : ''} total
-          </p>
+          <div class="folder-grid">${folderCards}</div>
+          <p class="welcome-total">📄 ${wikiPages.length} page${wikiPages.length !== 1 ? 's' : ''} total</p>
         ` : `
-          <p style="margin-top:1rem;font-size:0.9rem;color:#6b8aa0;">
-            📁 Click <strong>📁 Select</strong> in the sidebar to choose your folder
-          </p>
+          <p class="welcome-total">📁 Click <strong>📁 Select</strong> in the sidebar to choose your folder</p>
         `}
       </div>
     `;
 
+    // Folder cards open the category landing view
+    $('contentArea').querySelectorAll('.folder-card').forEach(el => {
+      const open = () => showCategory(el.dataset.cat);
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+      });
+    });
+
     $('contentArea').scrollTop = 0;
-    $('versionBadge').style.display = 'none';
-    $('editBtn').hidden = true;
-    $('saveBtn').hidden = true;
-    $('historyBtn').style.display = 'none';
-    $('printBtn').style.display = 'none';
+    resetPageChrome();
+  }
+
+  // Category landing view: two-column list of every page in the category,
+  // shown in the main content area (which scrolls when the list is longer
+  // than the viewport). Opened from a sidebar category header or a welcome
+  // folder card; survives save/resync via currentCategoryView.
+  function showCategory(cat) {
+    if (!cat) return;
+    currentPageId = null;
+    currentCategoryView = cat;
+
+    const label = cat.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const pages = wikiPages
+      .filter(p => p.category === cat)
+      .sort((a, b) => a.title.localeCompare(b.title));
+
+    $('pageTitle').textContent = label;
+    $('crumbCat').textContent = '🏠 Home';
+
+    let body;
+    if (pages.length === 0) {
+      body = `
+        <div class="empty-state">
+          <div class="big-icon">${getFolderIcon(cat)}</div>
+          <h2>No pages yet</h2>
+          <p>Use <strong>+ Add</strong> in the sidebar to create the first page in ${escapeHtml(label)}.</p>
+        </div>`;
+    } else {
+      let cards = '';
+      pages.forEach(p => {
+        const v = p.version > 1 ? `<span class="badge">v${p.version}</span>` : '';
+        cards += `
+          <div class="category-card" data-page-id="${escapeHtml(p.id)}" role="button" tabindex="0">
+            <span class="category-card-title">${escapeHtml(p.title)}</span>${v}
+          </div>`;
+      });
+      body = `
+        <div class="category-view-header">
+          <h2>${getFolderIcon(cat)} ${escapeHtml(label)}</h2>
+          <span class="category-view-count">${pages.length} page${pages.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="category-grid">${cards}</div>`;
+    }
+
+    $('contentArea').innerHTML = body;
+
+    $('contentArea').querySelectorAll('.category-card').forEach(el => {
+      const open = () => {
+        const p = wikiPages.find(pp => pp.id === el.dataset.pageId);
+        if (p) showPage(p);
+      };
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+      });
+    });
+
+    $('contentArea').scrollTop = 0;
+    resetPageChrome();
   }
 
   function getFolderIcon(category) {
