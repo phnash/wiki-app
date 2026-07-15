@@ -2677,6 +2677,12 @@
       const doc = new DOMParser().parseFromString(md, 'text/html');
       Array.from(doc.querySelectorAll('ul, ol')).forEach(list => {
         if (list.parentElement && list.parentElement.closest('ul, ol')) return;
+        // Lists inside table cells stay with the table converter: a GFM
+        // pipe-table cell is single-line by definition, so splicing a
+        // multi-line Markdown list into one ejects the extra lines out of
+        // the table and truncates it. In-cell lists are preserved as
+        // compact inline HTML instead (which marked renders in cells).
+        if (list.closest('td, th')) return;
         const token = `%%LISTCHUNK${listChunks.length}%%`;
         listChunks.push(listToMarkdown(list, ''));
         list.replaceWith(doc.createTextNode('\n' + token + '\n'));
@@ -2748,7 +2754,32 @@
 
         const cellContents = cells.map(cell => {
           let content = cell.replace(/<t[dh][^>]*>/, '').replace(/<\/t[dh]>/, '');
-          content = content.replace(/<[^>]*>/g, '').trim();
+
+          // Preserve real lists inside a cell as compact SINGLE-LINE HTML.
+          // A GFM cell can't hold a block Markdown list, but inline raw
+          // HTML is legal in cells and marked renders it - so the list
+          // survives display and edit round-trips. Item text is flattened
+          // to one line; the tags are shielded with placeholders so the
+          // strip-all-tags pass below doesn't eat them. (Deeply nested
+          // in-cell lists flatten to text - they can never break the
+          // table structure.)
+          content = content.replace(/<(ul|ol)[^>]*>([\s\S]*?)<\/\1>/gi, function(m, tag, inner) {
+            const items = [];
+            inner.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, function(mm, li) {
+              const t = li.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+              if (t) items.push('%%CLT%%li%%CGT%%' + t + '%%CLT%%/li%%CGT%%');
+              return '';
+            });
+            if (items.length === 0) return '';
+            return '%%CLT%%' + tag + '%%CGT%%' + items.join('') + '%%CLT%%/' + tag + '%%CGT%%';
+          });
+
+          content = content.replace(/<br\s*\/?>/gi, ' ');
+          content = content.replace(/<[^>]*>/g, ' ');
+          // A literal pipe in cell text would split the cell - GFM
+          // supports escaping it
+          content = content.replace(/\|/g, '\\|');
+          content = content.replace(/\s+/g, ' ').trim();
           return content || ' ';
         });
 
@@ -2765,6 +2796,8 @@
 
     md = md.replace(/\n{4,}/g, '\n\n');
     md = md.replace(/<[^>]*>/g, '');
+    // Restore the shielded in-cell list tags now that the strip pass ran
+    md = md.replace(/%%CLT%%/g, '<').replace(/%%CGT%%/g, '>');
     // Splice the converted lists back in (after the tag strip, since the
     // chunks are already Markdown), then restore the shielded <u> tags -
     // list items may contain them too, so this order matters
