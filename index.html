@@ -2493,16 +2493,23 @@
       height: 640,
       menubar: false,
       toolbar: [
-        'undo redo | bold italic underline strikethrough | formatselect',
+        'undo redo | bold italic underline strikethrough | blocks',
         'bullist numlist | alignleft aligncenter alignright | outdent indent',
         'link image | table | blockquote code | removeformat help'
       ],
+      block_formats: 'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Heading 4=h4; Heading 5=h5; Heading 6=h6',
       toolbar_sticky: false,
       resize: true,
       min_height: 400,
       cleanup: true,
       cleanup_on_startup: true,
-      valid_elements: 'p,br,strong/b,em/i,u,s/strike,h1,h2,h3,h4,' +
+      // style is allowed on block elements so alignment (toolbar buttons
+      // and Ctrl+E/L/R/J) is visible while editing - without it TinyMCE
+      // stripped text-align instantly, which made the alignment toolbar
+      // buttons silently do nothing. Alignment still doesn't persist to
+      // disk (Markdown has no alignment syntax; documented in keyboard.md).
+      valid_elements: 'p[style],br,strong/b,em/i,u,s/strike,' +
+        'h1[style],h2[style],h3[style],h4[style],h5[style],h6[style],' +
         'ul,ol,li,' +
         'a[href|target|rel|title],' +
         'img[src|alt|width|height],' +
@@ -2530,6 +2537,7 @@
         h2 { font-size: 1.4rem; margin: 1.5rem 0 0.4rem; color: #0a1e2f; }
         h3 { font-size: 1.15rem; margin: 1.2rem 0 0.3rem; color: #1a3347; }
         h4 { font-size: 1rem; margin: 1rem 0 0.2rem; color: #1a3347; }
+        h5, h6 { font-size: 0.95rem; margin: 0.8rem 0 0.2rem; color: #1f3f55; }
         p { margin-bottom: 0.8rem; }
         ul, ol { margin-left: 1.5rem; margin-bottom: 0.8rem; }
         li { margin-bottom: 0.2rem; }
@@ -2545,6 +2553,38 @@
         a:hover { color: #3a8fa0; }
       `,
       setup: function(editor) {
+        // ---- Keyboard shortcuts (documented in keyboard.md) ----
+        // TinyMCE 6 only ships a handful of bindings natively (bold/
+        // italic/underline, Ctrl+Alt+1-6 headings, Ctrl+Alt+7 paragraph,
+        // Ctrl+F find, Ctrl+K link, clipboard/undo). Everything else in
+        // keyboard.md is bound here explicitly. 'meta' maps to Ctrl on
+        // Windows/Linux and Cmd on macOS; numeric tokens are keyCodes
+        // (221 = ']', 219 = '[', 32 = Space, 13 = Enter).
+        const exec = cmd => () => editor.execCommand(cmd);
+        // TinyMCE's native heading bindings use the "access" modifier,
+        // which is Shift+Alt on Windows - keyboard.md documents Ctrl+Alt+N,
+        // so bind those explicitly (the native ones keep working too)
+        for (let level = 1; level <= 6; level++) {
+          editor.addShortcut('meta+alt+' + level, 'Heading ' + level, (function(l) {
+            return function() { editor.execCommand('FormatBlock', false, 'h' + l); };
+          })(level));
+        }
+        editor.addShortcut('meta+alt+0', 'Paragraph', () => editor.execCommand('FormatBlock', false, 'p'));
+        editor.addShortcut('meta+shift+s', 'Strikethrough', exec('Strikethrough'));
+        editor.addShortcut('meta+32', 'Remove formatting', exec('RemoveFormat'));
+        editor.addShortcut('meta+shift+7', 'Bulleted list', exec('InsertUnorderedList'));
+        editor.addShortcut('meta+shift+8', 'Numbered list', exec('InsertOrderedList'));
+        editor.addShortcut('meta+221', 'Indent', exec('Indent'));
+        editor.addShortcut('meta+219', 'Outdent', exec('Outdent'));
+        editor.addShortcut('meta+e', 'Align centre', exec('JustifyCenter'));
+        editor.addShortcut('meta+l', 'Align left', exec('JustifyLeft'));
+        editor.addShortcut('meta+r', 'Align right', exec('JustifyRight'));
+        editor.addShortcut('meta+j', 'Justify', exec('JustifyFull'));
+        editor.addShortcut('meta+h', 'Find and replace', exec('SearchReplace'));
+        editor.addShortcut('meta+shift+i', 'Insert image', exec('mceImage'));
+        editor.addShortcut('meta+shift+m', 'Insert table', exec('mceInsertTableDialog'));
+        editor.addShortcut('meta+13', 'Save page', function() { handleSavePage(); });
+
         editor.on('init', function() {
           const htmlContent = content ? DOMPurify.sanitize(marked.parse(content)) : '';
           editor.setContent(htmlContent);
@@ -2697,6 +2737,8 @@
     md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n');
     md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n');
     md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n');
+    md = md.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n');
+    md = md.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n');
 
     // Inline emphasis. All of these go through wrapEmphasis so that
     // whitespace TinyMCE captured inside the tag lands OUTSIDE the Markdown
@@ -3078,6 +3120,11 @@
         $('searchInput').focus();
       }
       if (e.key === 'Escape') {
+        // TinyMCE dialogs (link, find & replace, image, table) render in
+        // the MAIN document, so this handler sees their Escape too - let
+        // the dialog consume it instead of also closing the page modal
+        // underneath (which was discarding the user's edit session)
+        if (document.querySelector('.tox-dialog')) return;
         if (modal.classList.contains('active')) closeModal('pageModal');
         if (historyModal.classList.contains('active')) closeModal('historyModal');
         if ($('validationModal').classList.contains('active')) closeModal('validationModal');
